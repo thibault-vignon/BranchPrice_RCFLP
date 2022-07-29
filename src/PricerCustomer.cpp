@@ -146,122 +146,23 @@ void ObjPricerCustomerRCFLP::updateDualCosts(SCIP* scip, DualCostsTime & dual_co
     ///// RECUPERATION DES COUTS DUAUX
 
     int print = 0 ;
-    int n = inst->getn() ;
-    int T = inst->getT() ;
+    int I = inst->getI() ;
 
     //cout << "solution duale :" << endl ;
 
-    //couts duaux "logical constraint"
-    for (int i = 0; i < n; i++) {
-        for (int t = 1 ; t < T ; t++) {
-            if (!Farkas) {
-                dual_cost.Mu.at(i*T+t) = SCIPgetDualsolLinear(scip, Master->logical.at(i*T+t));
-            }
-            else{
-                dual_cost.Mu.at(i*T+t) = SCIPgetDualfarkasLinear(scip, Master->logical.at(i*T+t));
-            }
-            if (print)
-                cout << "mu(" << i <<"," << t <<") = " << dual_cost.Mu[i*T+t] <<endl;
-        }
-    }
-
-    //couts duaux "min-up constraint"
-    for (int i = 0; i < n; i++) {
-        int L = inst->getL(i) ;
-        for (int t = L ; t < T ; t++) {
-            if (!Farkas) {
-                dual_cost.Nu.at(i*T+t) = SCIPgetDualsolLinear(scip, Master->min_up.at(i*T+t));
-            }
-            else{
-                dual_cost.Nu.at(i*T+t) = SCIPgetDualfarkasLinear(scip, Master->min_up.at(i*T+t));
-            }
-            if (print)
-                cout << "nu(" << i <<"," << t <<") = " << dual_cost.Nu.at(i*T+t) <<endl;
-        }
-    }
-
-    //couts duaux "min-down constraint"
-    for (int i = 0; i < n; i++) {
-        int l = inst->getl(i) ;
-        for (int t = l ; t < T ; t++) {
-            if (!Farkas) {
-                dual_cost.Xi.at(i*T+t) = SCIPgetDualsolLinear(scip, Master->min_down.at(i*T+t));
-            }
-            else{
-                dual_cost.Xi.at(i*T+t) = SCIPgetDualfarkasLinear(scip, Master->min_down.at(i*T+t));
-            }
-            if (print)
-                cout << "xi(" << i <<"," << t <<") = " << dual_cost.Xi.at(i*T+t) <<endl;
-        }
-    }
-
     //couts duaux "convexity constraint"
-    for (int t = 0 ; t < T ; t++) {
+    for (int i = 0 ; i < I ; i++) {
         if (!Farkas) {
-            dual_cost.Sigma.at(t) = SCIPgetDualsolLinear(scip, Master->convexity_cstr.at(t));
+            dual_cost.Sigma.at(i) = SCIPgetDualsolLinear(scip, Master->convexity_cstr.at(i));
         }
         else{
-            dual_cost.Sigma.at(t) = SCIPgetDualfarkasLinear(scip, Master->convexity_cstr.at(t));
+            dual_cost.Sigma.at(i) = SCIPgetDualfarkasLinear(scip, Master->convexity_cstr.at(i));
         }
         if (print)
             cout << "sigma(" << t <<") = " << dual_cost.Sigma[t] <<endl;
     }
 
-    if (Param.masterSSBI) {
-
-        ///RSU
-        for (int i = 0; i < n-1; i++) {
-            if (!inst->getLast(i)) {
-                int l = inst->getl(i) ;
-                for (int t = l ; t < T ; t++) {
-                    if (!Farkas) {
-                        dual_cost.Epsilon.at(i*T+t) = SCIPgetDualsolLinear(scip, Master->rsu.at(i*T+t));
-                    }
-                    else{
-                        dual_cost.Epsilon.at(i*T+t) = SCIPgetDualfarkasLinear(scip, Master->rsu.at(i*T+t));
-                    }
-                    if (print) cout << "epsilon(" << i <<"," << t <<") = " << dual_cost.Epsilon.at(i*T+t) <<endl;
-                }
-            }
-        }
-
-        ///RSD
-        if (!Param.RSUonly) {
-        for (int i = 0; i < n-1; i++) {
-            if (!inst->getLast(i)) {
-                int L = inst->getL(i) ;
-                for (int t = L ; t < T ; t++) {
-                    if (!Farkas) {
-                        dual_cost.Delta.at(i*T+t) = SCIPgetDualsolLinear(scip, Master->rsd.at(i*T+t));
-                    }
-                    else{
-                        dual_cost.Delta.at(i*T+t) = SCIPgetDualfarkasLinear(scip, Master->rsd.at(i*T+t));
-                    }
-                    if (print) cout << "delta(" << i <<"," << t <<") = " << dual_cost.Delta.at(i*T+t) <<endl;
-                }
-            }
-        }
-        }
-    }
-
-    if (Param.IntervalUpSet) {
-
-        // Couts duaux "interval up set"
-        list<IneqIntUpSet*>::const_iterator iup;
-        for (int t = 0 ; t < T ; t++) {
-            for (iup = Master->IUP_t0[t].begin(); iup!= Master->IUP_t0[t].end() ; iup++) {
-                if (!Farkas) {
-                    (*iup)->dual = SCIPgetDualsolLinear(scip, (*iup)->ineq);
-                }
-                else {
-                    (*iup)->dual = SCIPgetDualfarkasLinear(scip, (*iup)->ineq);
-                }
-            }
-        }
-    }
-
-    if (print) cout << endl ;
-
+    // TODO : autres contraintes
 }
 
 void ObjPricerCustomerRCFLP::pricingRCFLP( SCIP*              scip  , bool Farkas             /**< SCIP data structure */)
@@ -276,11 +177,10 @@ void ObjPricerCustomerRCFLP::pricingRCFLP( SCIP*              scip  , bool Farka
     cout<<"**************PRICER************ " << endl ;
 
     
-    Master->nbIter++;
+    iteration++;
 
   // SCIPwriteTransProblem(scip, NULL, NULL, FALSE);
     //SCIPprintSol(scip, NULL, NULL, FALSE);
-    if (print) {
 
 //        /// PMR courant et sa solution
 //        SCIPwriteTransProblem(scip, NULL, NULL, FALSE);
@@ -290,33 +190,22 @@ void ObjPricerCustomerRCFLP::pricingRCFLP( SCIP*              scip  , bool Farka
 
 //        //cout << "solution réalisable:" << endl ;
 //        SCIPprintBestSol(scip, NULL, FALSE);
-    }
 
-    //// Cout duaux
-    int T = inst->getT() ;
-    int n = inst->getn() ;
+    int I = inst->getI() ;
+    int J = inst->getJ() ;
 
-    timeVarsToAdd.clear() ;
+    customerVarsToAdd.clear() ;
 
-    double epsilon = 0.0000001 ;
-
-    DualCostsTime dual_cost = DualCostsTime(inst) ;
-
+    // Cout duaux
+    DualCostsCustomer dual_cost = DualCostsCustomer(inst) ;
     updateDualCosts(scip, dual_cost, Farkas);
 
-    bool oneImprovingSolution = false ;
 
-    int cas=0 ;
-    int nb_cas=1;
-    if (Param.DontPriceAllTimeSteps) {
-        nb_cas=2 ;
-    }
 
-    int min=0 ;
-    int max=T ;
-    if (Param.OneTimeStepPerIter) {
-        nb_cas=2 ;
-    }
+
+
+
+
 
     while (!oneImprovingSolution && cas < nb_cas) { // Si on n'a pas trouvé de colonne améliorante dans le cas 1, on passe au cas 2: on cherche une colonne pour tous les pas de temps
 

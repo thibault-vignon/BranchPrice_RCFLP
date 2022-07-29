@@ -24,69 +24,43 @@ ObjPricerDouble::ObjPricerDouble(
         SCIP*                                scip,          /**< SCIP pointer */
         const char*                         pp_name,      /**< name of pricer */
         MasterDouble_Model*                        M,
-        InstanceUCP*                        instance,
+        InstanceRCFLP*                        instance,
         const Parameters &                  param
         ):
-    ObjPricerUCP(scip, pp_name, instance, param), ParamMaster(param)
+    ObjPricerRCFLP(scip, pp_name, instance, param), ParamMaster(param)
 {
     Master=M ;
-    //cout<<Master->S<<endl;
-    AlgoCplex_site = vector<CplexPricingAlgo*>(Param.nbDecGpes, NULL) ;
-    AlgoDynProg_site = vector<DynProgPricingAlgo*>(Param.nbDecGpes, NULL) ;
-    iteration=0;
 
-    unitColumns=0;
-    timeColumns=0;
+    J = inst->getJ();
+    I = inst->getI();
+
+    AlgoCplex_facility = vector<CplexPricingAlgo*>(J, NULL) ;
+    AlgoDynProg_facility = vector<DynProgPricingAlgo*>(J, NULL) ;
 
     if (!Param.DynProg) {
-        for (int s=0 ; s < Param.nbDecGpes ; s++) {
-            AlgoCplex_site.at(s) = new CplexPricingAlgo(inst, param, s) ;
+        for (int j = 0 ; j < J ; j++) {
+            AlgoCplex_facility.at(s) = new CplexPricingAlgoFacility(inst, param, s) ;
         }
     }
     else {
-        for (int s=0 ; s < Param.nbDecGpes ; s++) {
-            AlgoDynProg_site.at(s) = new DynProgPricingAlgo(inst, Master, param, s) ;
-            // cout << "s = " << s << endl;
-            // cout << AlgoDynProg_site.at(s)->Site << endl;
+        for (int j = 0 ; j < J ; j++) {
+            AlgoDynProg_facility.at(s) = new DynProgPricingAlgoFacility(inst, param, s) ;
         }
     }
 
 
-    int T= inst->getT() ;
-    AlgoCplex_time = vector<CplexPricingAlgoTime*>(T, NULL) ;
-    AlgoDynProg_time = vector<DynProgPricingAlgoTime*>(T, NULL) ;
-
-    timeStepColumns = vector<int>(T,0);
+    AlgoCplex_customer = vector<CplexPricingAlgoCustomer*>(I, NULL) ;
+    AlgoDynProg_customer = vector<DynProgPricingAlgoCustomer*>(I, NULL) ;
 
     if (!Param.DynProgTime) {
-        for (int t=0 ; t < T ; t++) {
-            AlgoCplex_time.at(t) = new CplexPricingAlgoTime(inst, param, t) ;
+        for (int i=0 ; i < I ; i++) {
+            AlgoCplex_customer[i] = new CplexPricingAlgoCustomer(inst, param, i) ;
         }
     }
     else {
-        if (Param.powerPlanGivenByMu) {
-            for (int t=0 ; t < T ; t++) {
-                AlgoDynProg_time.at(t) = new DynProgPricingAlgoTimePower(inst, Master, param, t) ;
-            }
+        for (int i=0 ; i < I ; i++) {
+            AlgoDynProg_customer.at(t) = new DynProgPricingAlgoCustomer(inst, param, t) ;
         }
-        else {
-            for (int t=0 ; t < T ; t++) {
-                AlgoDynProg_time.at(t) = new DynProgPricingAlgoTimeNoPower(inst, Master, param, t) ;
-            }
-        }
-    }
-
-    lastTimeStep=-1 ;
-    infeasibilityDetected = false ;
-    guidageTermine = false;
-
-
-    //Pricers sans répartition de couts
-
-    for (int i=0 ; i < inst->getn() ; i++) {
-        ParamMaster.costBalancingPricer.at(i) = ParamMaster.costBalancingMaster.at(i);
-        cout << "pricer: " << Param.costBalancingPricer.at(i) << endl;
-        cout << "master: " << ParamMaster.costBalancingPricer.at(i) << endl;
     }
 }
 
@@ -107,81 +81,47 @@ SCIP_DECL_PRICERINIT(ObjPricerDouble::scip_init)
 {
     cout<<"**************PRICER INIT************ "<<endl;
 
-    int T = inst->getT() ;
-    int n = inst->getn() ;
+    J = inst->getJ();
+    I = inst->getI();
 
-    //cout<<"site convexity"<<endl;
-    //cout<<Master->S<<endl;
-    //site convexity constraints
-    for (int s = 0 ; s < Param.nbDecGpes ; s++) {
-        //cout<<Master->conv_lambda_site.at(s)<<endl;
-        SCIPgetTransformedCons(scip, Master->conv_lambda_site.at(s), &(Master->conv_lambda_site.at(s)));
+    //cout<<"facility convexity"<<endl;
+    //facility convexity constraints
+    for (int j = 0 ; j < J ; j++) {
+        SCIPgetTransformedCons(scip, Master->conv_lambda_facility.at(j), &(Master->conv_lambda_facility.at(j)));
     }
 
-    //cout<<"time convexity"<<endl;
-    // time convexity constraints
-    for (int t = 0 ; t < T ; t++) {
-        SCIPgetTransformedCons(scip, Master->conv_lambda_time.at(t), &(Master->conv_lambda_time.at(t)));
+    //cout<<"customer convexity"<<endl;
+    //customer convexity constraints
+    for (int i=0 ; i < I ; i++) {
+        SCIPgetTransformedCons(scip, Master->conv_lambda_customer.at(i), &(Master->conv_lambda_customer.at(i)));
     }
+
     //cout<<"equality"<<endl;
-    // equality time / site
-    for (int t = 0 ; t < T ; t++) {
-        for (int i = 0 ; i < n ; i++) {
-            SCIPgetTransformedCons(scip, Master->eq_time_site.at(i*T+t), &(Master->eq_time_site.at(i*T+t)));
+    // equality customer / facility on x
+    for (int j = 0 ; j < J ; j++) {
+        for (int i=0 ; i < I ; i++) {
+            SCIPgetTransformedCons(scip, Master->eq_customer_facility_x.at(j*I + i), &(Master->eq_customer_facility_x.at(j*I + i)));
         }
     }
 
-    if (Param.minUpDownDouble) {
-      // logical constraints
-        for (int i = 0 ; i < n ; i++) {
-            for (int t = 1 ; t < T ; t++) {
-                SCIPgetTransformedCons( scip, Master->logical.at(i*T+t), &(Master->logical.at(i*T+t)) );
-            }
-        }
-
-    // min-up constraints
-        for (int i = 0 ; i <n ; i++) {
-            int L = inst->getL(i) ;
-            for (int t = L ; t < T ; t++) {
-                SCIPgetTransformedCons( scip, Master->min_up.at(i*T+t), &(Master->min_up.at(i*T+t)) );
-            }
-        }
-    // min-down constraints
-        for (int i = 0 ; i <n ; i++) {
-            int l = inst->getl(i) ;
-            for (int t = l ; t < T ; t++) {
-                SCIPgetTransformedCons( scip, Master->min_down.at(i*T+t), &(Master->min_down.at(i*T+t)) );
+    if (Param.compactCapacityConstraints){
+        // equality customer / facility on y
+        for (int j = 0 ; j < J ; j++) {
+            for (int i=0 ; i < I ; i++) {
+                SCIPgetTransformedCons(scip, Master->eq_customer_facility_y.at(j*I + i), &(Master->eq_customer_facility_y.at(j*I + i)));
             }
         }
     }
-
-    if (Param.PminDifferentPmax && !Param.powerPlanGivenByMu){
-        // demand constraints
-        for (int t = 0 ; t < T ; t++) {
-            SCIPgetTransformedCons(scip, Master->demand_cstr.at(t), &(Master->demand_cstr.at(t)));
-        }
-        //power limits
-        for (int t = 0 ; t < T ; t++) {
-            for (int i = 0 ; i < inst->getn() ; i++) {
-                SCIPgetTransformedCons(scip, Master->power_limits[i*T+t], &(Master->power_limits[i*T+t]));
+    else{
+        // equality between facilities on y
+        for (int j = 0 ; j < J ; j++) {
+            for (int i=1 ; i < I ; i++) {
+                SCIPgetTransformedCons(scip, Master->eq_customer_facility_y.at(j*I + i), &(Master->eq_customer_facility_y.at(j*I + i)));
             }
         }
     }
-
-    if (Param.IntraSite && Param.UnitDecompo) {
-        for (int t = 1; t < T; t++) {
-            for (int s = 0 ; s < inst->getS() ; s++) {
-                //SCIPgetTransformedCons(scip, Master->intrasite[s*T+t], &(Master->intrasite[s*T+t]));
-            }
-        }
-    }
-
 
     cout<<"**************FIN PRICER INIT************ "<<endl ;
-    //variables ?
-
-
-    //pour l'instant on n'a pas besoin de les manipuler a priori
 
     return SCIP_OKAY;
 }
@@ -204,7 +144,7 @@ SCIP_DECL_PRICERINIT(ObjPricerDouble::scip_init)
 //    /* set result pointer, see above */
 //    *result = SCIP_SUCCESS;
 //    /* call pricing routine */
-//    pricingUCP(scip,0);
+//    pricingRCFLP(scip,0);
 //    return SCIP_OKAY;
 //}
 
@@ -225,7 +165,7 @@ SCIP_RETCODE ObjPricerDouble::scip_redcost(SCIP* scip, SCIP_PRICER* pricer, SCIP
     //check if convergence between upper and lower bounds has been reached
     if (( (SCIPgetSolOrigObj(scip,NULL) - currentLowerBound)/(0.0000000001 + SCIPgetSolOrigObj(scip,NULL)) > 0.0001) || !Param.useLowerBound){
         /* call pricing routine */
-        pricingUCP(scip,0);
+        pricingRCFLP(scip,0);
     }
 
     return SCIP_OKAY;
@@ -246,7 +186,7 @@ SCIP_RETCODE ObjPricerDouble::scip_farkas( SCIP* scip, SCIP_PRICER* pricer, SCIP
     *result = SCIP_SUCCESS;
 
     /* call pricing routine */
-    pricingUCP(scip,1);
+    pricingRCFLP(scip,1);
 
     return SCIP_OKAY;
 
@@ -259,19 +199,18 @@ void ObjPricerDouble::updateDualCosts_site(SCIP* scip, DualCosts & dual_cost, bo
 
 
     int print = 0 ;
-    int n = inst->getn() ;
-    int T = inst->getT() ;
-    int S = Param.nbDecGpes ;
+    J = inst->getJ();
+    I = inst->getI();
 
     //cout << "solution duale :" << endl ;
     //couts duaux contrainte égalité
-    for (int i = 0; i < n; i++) {
-        for (int t = 0 ; t < T ; t++) {
+    for (int j = 0 ; j < J ; j++) {
+        for (int i=1 ; i < I ; i++) {
             if (!Farkas) {
-                dual_cost.Omega[i*T+t] = SCIPgetDualsolLinear(scip, Master->eq_time_site.at(i*T+t) );
+                dual_cost.Omega1[j*I + i] = SCIPgetDualsolLinear(scip, Master->eq_customer_facility_x.at(j*I + i) );
             }
             else{
-                dual_cost.Omega[i*T+t] = SCIPgetDualfarkasLinear(scip, Master->eq_time_site.at(i*T+t) );
+                dual_cost.Omega1[j*I + i] = SCIPgetDualfarkasLinear(scip, Master->eq_customer_facility_x.at(j*I + i) );
             }
 
             if (print)
@@ -281,58 +220,15 @@ void ObjPricerDouble::updateDualCosts_site(SCIP* scip, DualCosts & dual_cost, bo
 
 
     //couts duaux contrainte convexité site
-    for (int s = 0 ; s < S ; s++) {
-
+    for (int j = 0 ; j < J ; j++) {
         if (!Farkas) {
-            dual_cost.Sigma[s] = SCIPgetDualsolLinear(scip, Master->conv_lambda_site[s]);
+            dual_cost.Sigma[j] = SCIPgetDualsolLinear(scip, Master->conv_lambda_facility[j]);
         }
         else{
-            dual_cost.Sigma[s] = SCIPgetDualfarkasLinear(scip, Master->conv_lambda_site[s]);
+            dual_cost.Sigma[j] = SCIPgetDualfarkasLinear(scip, Master->conv_lambda_facility[j]);
         }
-        if (print) cout << "sigma: " << dual_cost.Sigma[s] <<endl;
+        if (print) cout << "sigma: " << dual_cost.Sigma[j] <<endl;
     }
-
-    if (Param.PminDifferentPmax && !Param.powerPlanGivenByMu){
-        //couts duaux power limits
-        for (int i = 0; i < n; i++) {
-            for (int t = 0 ; t < T ; t++) {
-                if (!Farkas) {
-                    dual_cost.Nu.at(i*T+t) = SCIPgetDualsolLinear(scip, Master->power_limits.at(i*T+t));
-                }
-                else{
-                    dual_cost.Nu.at(i*T+t) = SCIPgetDualfarkasLinear(scip, Master->power_limits.at(i*T+t));
-                }
-                if (print)
-                    cout << "nu(" << i <<"," << t <<") = " << dual_cost.Nu.at(i*T+t) <<endl;
-            }
-        }
-        //couts duaux demande
-        for (int t = 0 ; t < T ; t++) {
-            if (!Farkas) {
-                dual_cost.Mu[t] = SCIPgetDualsolLinear(scip, Master->demand_cstr[t]);
-            }
-            else{
-                dual_cost.Mu[t] = SCIPgetDualfarkasLinear(scip, Master->demand_cstr[t]);
-            }
-            if (print) cout << "mu: " << dual_cost.Mu[t] <<endl;
-        }
-    }
-
-    //couts duaux intrasite
-    if (Param.IntraSite && Param.UnitDecompo) {
-        //        for (int s = 0 ; s < inst->getS() ; s++) {
-        //            for (int t = 1 ; t < T ; t++) {
-        //                if (!Farkas) {
-        //                    dual_cost.Eta[s*T+t] = SCIPgetDualsolLinear(scip, Master->intrasite[s*T+t]);
-        //                }
-        //                else{
-        //                    dual_cost.Eta[s*T+t] = SCIPgetDualfarkasLinear(scip, Master->intrasite[s*T+t]);
-        //                }
-        //            }
-        //        }
-    }
-
-
 
 }
 void ObjPricerDouble::updateDualCosts_time(SCIP* scip, DualCostsTime & dual_cost, bool Farkas) {
@@ -419,7 +315,7 @@ void ObjPricerDouble::updateDualCosts_time(SCIP* scip, DualCostsTime & dual_cost
 
 }
 
-void ObjPricerDouble::pricingUCP( SCIP*              scip  , bool Farkas             /**< SCIP data structure */)
+void ObjPricerDouble::pricingRCFLP( SCIP*              scip  , bool Farkas             /**< SCIP data structure */)
 {
 #ifdef OUTPUT_PRICER
     cout<<"**************PRICER************ "<< endl ;
@@ -957,7 +853,7 @@ void ObjPricerDouble::pricingUCP( SCIP*              scip  , bool Farkas        
     }
 
 #ifdef OUTPUT_PRICER
-    SCIPwriteTransProblem(scip, "ucp.lp", "lp", FALSE);
+    SCIPwriteTransProblem(scip, "RCFLP.lp", "lp", FALSE);
     cout<<"************END PRICER******************"<<endl;
 #endif
 
