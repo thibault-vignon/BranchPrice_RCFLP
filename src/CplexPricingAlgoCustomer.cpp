@@ -16,167 +16,88 @@ DualCostsCustomer::DualCostsCustomer(InstanceRCFLP* inst) {
 
 
 
-CplexPricingAlgoTime::CplexPricingAlgoTime(InstanceUCP* inst, const Parameters & par, int t) : Param(par) {
+CplexPricingAlgoCustomer::CplexPricingAlgoCustomer(InstanceRCFLP* inst, const Parameters & par, int c) : Param(par) {
     //env=IloEnv() ;
 
-    time=t;
+    customer = c;
 
-    int n = inst->getn() ;
     model = IloModel(env) ;
 
-    x = IloBoolVarArray(env, n) ;
+    int J = inst->getJ() ;
+
+    x = IloBoolVarArray(env, J) ;
+    y = IloBoolVarArray(env, J) ;
+
+    BaseObjCoefX.resize(J, 0) ;
+    BaseObjCoefY.resize(J, 0) ;
 
     obj = IloAdd(model, IloMinimize(env, 0.0));
 
-    if (Param.powerPlanGivenByMu || !Param.doubleDecompo){
-        p = IloNumVarArray(env, n, 0.0, 1000.0) ;
-        //Limite de production
-        for (int i=0; i<n; i++) {
-            model.add(p[i] <= (inst->getPmax(i)-inst->getPmin(i))*x[i] );
-            model.add(p[i] >= 0);
-        }
 
-        //Demande
-        IloExpr Prod(env) ;
-        for (int i=0; i<n; i++) {
-            Prod += p[i] + inst->getPmin(i)*x[i];
-        }
-        model.add(inst->getD(time) <= Prod);
-        Prod.end() ;
-
-        cplex = IloCplex(model);
-        //cplex.setParam(IloCplex::EpGap, 0.01) ;
+    // Assignment of customer to a facility
+    IloExpr sum(env) ;
+    for (int j=0 ; j < J ; j++) {
+        sum += x[j];
     }
-    else{
-        //Demande
-        IloExpr Prod(env) ;
-        for (int i=0; i<n; i++) {
-            Prod += inst->getPmax(i)*x[i];
-        }
-        model.add(inst->getD(time) <= Prod);
-        Prod.end() ;
+    model.add(sum == 1) ;
+    sum.end() ;
 
-        cplex = IloCplex(model);
-        cplex.setParam(IloCplex::EpGap, 0.01) ;
+    // Reliability constraint
+    for (int j=0 ; j < J ; j++) {
+        IloExpr sum(env) ;
+        for (int indice=0; indice<inst->getv(); indice++){
+            sum += y[inst->getV(j)[indice]] * inst->getc(inst->getV(j)[indice]);
+        }
+        model.add(sum >= x[j] * inst->getd(customer) * inst->getK()) ;
     }
 
 
-    //Initialisation des coefficients objectifs (primaux) de x
-    BaseObjCoefX.resize(n, 0) ;
-    for (int i=0 ; i <n ; i++) {
-        BaseObjCoefX.at(i) = inst->getcf(i) + (inst->getPmin(i))*inst->getcp(i) ;
+    cplex = IloCplex(model);
+    cplex.setParam(IloCplex::EpGap, 0.00001) ;
+
+    cplex.setParam(IloCplex::Param::Threads, 1);
+    //cplex.setParam(IloCplex::Param::Parallel, -1);
+
+    //Initialisation des coefficients objectifs (primaux)
+    if (Param.doubleDecompo){
+        for (int j=0 ; j < J ; j++) {
+            BaseObjCoefX.at(j) = 0 ;
+            BaseObjCoefY.at(j) = inst->getb(j) / inst->getI() ;
+        }
+    }
+    else {
+        for (int j=0 ; j < J ; j++) {
+            BaseObjCoefX.at(j) = inst->geta(j,customer) ;
+            BaseObjCoefY.at(j) = inst->getb(j) / inst->getI() ;
+        }
     }
 }
 
-void CplexPricingAlgoTime::updateObjCoefficients(InstanceUCP* inst, const Parameters & Param, const DualCostsTime & Dual, bool Farkas) {
+void CplexPricingAlgoCustomer::updateObjCoefficients(InstanceRCFLP* inst, const Parameters & Param, const DualCostsCustomer & Dual, bool Farkas) {
 
-    int n = inst->getn();
-    int T = inst->getT() ;
+    int I = inst->getI() ;
+    int J = inst->getJ() ;
 
-    for (int i=0 ; i<n ; i++) {
+    for (int j=0 ; j<J ; j++) {
 
-        int L= inst->getL(i);
-        int l= inst->getl(i);
+            obj.setLinearCoef(x[j], BaseObjCoefX.at(j) );
+            obj.setLinearCoef(y[j], BaseObjCoefY.at(j) ) ;
 
-        if (Param.doubleDecompo) {
-
-            double dual_coef = 0 ;
-            dual_coef += Dual.Omega.at(i*T+time);
-            
-            if (Param.minUpDownDouble) {
-                if (time>0) {
-                    dual_coef += - Dual.Mu.at(i*T + time) ;
-                }
-                if (time< T-1) {
-                    dual_coef += Dual.Mu.at(i*T + time+1) ;
-                }
-                if (time>=L) {
-                    dual_coef += - Dual.Nu.at(i*T+ time) ;
-                }
-
-                if (time<=T-l-1) {
-                    dual_coef += - Dual.Xi.at(i*T + time + l) ;
-                }
-            }
-            
-            if (!Farkas) {
-                if (Param.powerPlanGivenByMu){
-                    obj.setLinearCoef(p[i], inst->getcp(i)) ;
-                    if (Param.PminOnLambda){
-                        obj.setLinearCoef(x[i], (1 - Param.costBalancingPricer.at(i)) * BaseObjCoefX.at(i)  + dual_coef );
-                    }
-                    else if (Param.PmaxOnLambda){
-                        obj.setLinearCoef(x[i], BaseObjCoefX.at(i) - Param.costBalancingPricer.at(i) * ( inst->getcf(i) + inst->getcp(i) * inst->getPmax(i) ) + dual_coef );
-                    }
-                    else{
-                        obj.setLinearCoef(x[i], BaseObjCoefX.at(i) - Param.costBalancingPricer.at(i) * inst->getcf(i) + dual_coef );
-                    }
-                }
-                else{
-                    obj.setLinearCoef(x[i], (1 - Param.costBalancingPricer.at(i)) * BaseObjCoefX.at(i)  + dual_coef );
-                }
-            }
-
-        }
-        else {
-
-            //// Calcul du cout réduit de x
-            double dual_coef = 0 ;
-            if (time>0) {
-                dual_coef += - Dual.Mu.at(i*T + time) ;
-            }
-            if (time< T-1) {
-                dual_coef += Dual.Mu.at(i*T + time+1) ;
-            }
-            if (time>=L) {
-                dual_coef+= - Dual.Nu.at(i*T+ time) ;
-            }
-
-            if (time<=T-l-1) {
-                dual_coef += - Dual.Xi.at(i*T + time + l) ;
-            }
-
-            /// Mise à jour de la fonction objectif
-            if (!Farkas) {
-                obj.setLinearCoef(x[i],BaseObjCoefX.at(i)  + dual_coef );
-                obj.setLinearCoef(p[i], inst->getcp(i)) ;
-            }
-            else {
-                obj.setLinearCoef(x[i], dual_coef );
-                obj.setLinearCoef(p[i], 0.0) ;
-            }
-        }
     }
 
 }
 
 
-bool CplexPricingAlgoTime::findImprovingSolution(InstanceUCP* inst, const DualCostsTime & Dual, double& objvalue, double & temps_resolution, int exact) {
+bool CplexPricingAlgoCustomer::findImprovingSolution(InstanceRCFLP* inst, const DualCostsCustomer & Dual, double& objvalue) {
     //returns True if a solution has been found
 
     ofstream LogFile("LogFile.txt");
     cplex.setOut(LogFile);
 
-    if (exact) {
-        cplex.setParam(IloCplex::EpGap, Param.Epsilon) ;
-    }
-    else {
-        cplex.setParam(IloCplex::EpGap, 0.1) ;
-    }
-
-    cplex.setParam(IloCplex::Param::Threads, 1);
-    //cplex.setParam(IloCplex::Param::Parallel, -1);
-
-    clock_t start;
-    start = clock();
-
     if ( !cplex.solve() ) {
         env.error() << "Failed to optimize Pricer with Cplex" << endl;
         exit(1);
     }
-
-    temps_resolution = ( clock() - start ) / (double) CLOCKS_PER_SEC;
-
     if (cplex.getStatus()==CPX_STAT_INFEASIBLE){
         cout<<"NO SOLUTION TO PRICER"<<endl;
         cout<<endl<<" ************************* END PRICER with CPLEX"<<endl<<endl;
@@ -184,30 +105,14 @@ bool CplexPricingAlgoTime::findImprovingSolution(InstanceUCP* inst, const DualCo
         return false;
     }
     else {
-        objvalue = cplex.getObjValue() - Dual.Sigma[time] ;
+        objvalue = cplex.getObjValue() - Dual.Sigma[customer] ;
     }
     return true ;
 }
 
-void CplexPricingAlgoTime::getUpDownPlan(InstanceUCP* inst, const DualCostsTime & Dual, IloNumArray UpDownPlan, IloNumArray PowerPlan, double& realCost, double & totalProd, bool Farkas) {
+void CplexPricingAlgoCustomer::getSolution(InstanceRCFLP* inst, const DualCostsCustomer & Dual, IloNumArray xPlan, IloNumArray yPlan, bool Farkas) {
 
+    cplex.getValues(x, xPlan) ;
+    cplex.getValues(y, yPlan) ;
 
-    int n = inst->getn();
-    int T = inst->getT() ;
-
-    cplex.getValues(x, UpDownPlan) ;
-
-    if (!Param.doubleDecompo || (Param.doubleDecompo && Param.powerPlanGivenByMu)){
-        IloNumArray prod(env, n) ;
-        cplex.getValues(p, prod) ;
-        for (int i=0 ; i <n ; i++) {
-            if (UpDownPlan[i] > 1 - Param.Epsilon) {
-                PowerPlan[i] = inst->getPmin(i) + prod[i] ;
-            }
-            else{
-                PowerPlan[i] = 0;
-            }
-            totalProd += PowerPlan[i];
-        }
-    }
 }

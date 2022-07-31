@@ -25,10 +25,21 @@ void MasterCustomer_Variable::computeCost(InstanceRCFLP* inst, const Parameters 
     // TODO
 
     if (Param.doubleDecompo){
-
+        for (int j = 0 ; j < inst->getJ() ; j++) {
+            if (y_plan[j] > 1 - Param.Epsilon){
+                cost += inst->getb(j) / inst->getI();
+            }
+        }
     }
     else{
-
+        for (int j = 0 ; j < inst->getJ() ; j++) {
+            if (y_plan[j] > 1 - Param.Epsilon){
+                cost += inst->getb(j) / inst->getI();
+            }
+            if (x_plan[j] > 1 - Param.Epsilon){
+                cost += inst->geta(j,customer);
+            }
+        }
     }
 }
 

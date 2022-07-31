@@ -60,6 +60,13 @@ MAINOBJ		=	main.o \
 			MasterFacility.o \
 			MasterCustomer.o \
 			MasterDouble.o \
+			CplexPricingAlgoFacility.o \
+			CplexPricingAlgoCustomer.o \
+			DynProgPricingAlgoFacility.o \
+			DynProgPricingAlgoCustomer.o \
+			PricerFacility.o \
+			PricerCustomer.o \
+			PricerDouble.o \
 
 MAINSRC		=	$(addprefix $(SRCDIR)/,$(MAINOBJ:.o=.cpp))
 MAINDEP		=	$(SRCDIR)/depend.cppmain.$(OPT)

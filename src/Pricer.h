@@ -138,7 +138,7 @@ public:
       );
 
    /** Destructs the pricer object. */
-   virtual ~ObjPricerTimeRCFLP();
+   virtual ~ObjPricerCustomerRCFLP();
 
    /** initialization method of variable pricer (called after problem was transformed) */
    virtual SCIP_DECL_PRICERINIT(scip_init);
@@ -206,7 +206,7 @@ public:
    virtual  SCIP_RETCODE scip_farkas(SCIP* scip, SCIP_PRICER* pricer, SCIP_RESULT* result) override;
 
    /*put dual costs or farkas cost in vector dual_cost*/
-   void updateDualCosts_facility(SCIP* scip, DualCostsFaciility & dual_cost, bool Farkas) ;
+   void updateDualCosts_facility(SCIP* scip, DualCostsFacility & dual_cost, bool Farkas) ;
    void updateDualCosts_customer(SCIP* scip, DualCostsCustomer & dual_cost, bool Farkas) ;
 
    void addVarBound(SCIP_ConsData* consdata) ;

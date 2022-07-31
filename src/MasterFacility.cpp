@@ -19,11 +19,22 @@ void MasterFacility_Variable::computeCost(InstanceRCFLP* inst, const Parameters 
     // TODO
 
     if (Param.doubleDecompo){
-        
+        for (int i=0 ; i < inst->getI() ; i++) {
+            if (x_plan[i] > 1 - Param.Epsilon){
+                cost += inst->geta(facility,i);
+            }
+        }
     }
 
     else{
-
+        for (int i=0 ; i < inst->getI() ; i++) {
+            if (x_plan[i] > 1 - Param.Epsilon){
+                cost += inst->geta(facility,i);
+            }
+        }
+        if (y_plan[0] > 1 - Param.Epsilon){
+            cost += inst->getb(facility);
+        }
     }
 }
 

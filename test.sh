@@ -5,7 +5,7 @@ dossier=OR-Library
  
 printf $dossier " \n" >> result.txt
 
-printf " & I & J & v & K & id & Iter & Var & cols I & cols J & CPU & CPU(Master) & Gap & Dual b. & Primal b. & LR & LR(Cplex) \\\\\\ \n " >> result.txt
+printf " & J & I & v & K & id & Iter & Var & cols I & cols J & CPU & CPU(Master) & Gap & Dual b. & Primal b. & LR & LR(Cplex) \\\\\\ \n " >> result.txt
 for v in 15 ; do
   for id in "cap61" ; do
     for met in 100 ; do

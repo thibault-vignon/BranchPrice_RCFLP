@@ -32,14 +32,14 @@ ObjPricerCustomerRCFLP::ObjPricerCustomerRCFLP(
     AlgoCplex = vector<CplexPricingAlgoCustomer*>(I, NULL) ;
     AlgoDynProg = vector<DynProgPricingAlgoCustomer*>(I, NULL) ;
 
-    if (!Param.DynProgTime) {
+    if (!Param.DynProgCustomer) {
         for (int i=0 ; i < I ; i++) {
             AlgoCplex[i] = new CplexPricingAlgoCustomer(inst, param, i) ;
         }
     }
     else {
         for (int i=0 ; i < I ; i++) {
-            AlgoDynProg.at(t) = new DynProgPricingAlgoCustomer(inst, param, t) ;
+            AlgoDynProg.at(i) = new DynProgPricingAlgoCustomer(inst, param, i) ;
         }
     }
 
@@ -142,7 +142,7 @@ SCIP_RETCODE ObjPricerCustomerRCFLP::scip_farkas( SCIP* scip, SCIP_PRICER* price
 
 
 
-void ObjPricerCustomerRCFLP::updateDualCosts(SCIP* scip, DualCostsTime & dual_cost, bool Farkas) {
+void ObjPricerCustomerRCFLP::updateDualCosts(SCIP* scip, DualCostsCustomer & dual_cost, bool Farkas) {
     ///// RECUPERATION DES COUTS DUAUX
 
     int print = 0 ;
@@ -159,7 +159,7 @@ void ObjPricerCustomerRCFLP::updateDualCosts(SCIP* scip, DualCostsTime & dual_co
             dual_cost.Sigma.at(i) = SCIPgetDualfarkasLinear(scip, Master->convexity_cstr.at(i));
         }
         if (print)
-            cout << "sigma(" << t <<") = " << dual_cost.Sigma[t] <<endl;
+            cout << "sigma(" << i <<") = " << dual_cost.Sigma[i] <<endl;
     }
 
     // TODO : autres contraintes
@@ -200,137 +200,54 @@ void ObjPricerCustomerRCFLP::pricingRCFLP( SCIP*              scip  , bool Farka
     DualCostsCustomer dual_cost = DualCostsCustomer(inst) ;
     updateDualCosts(scip, dual_cost, Farkas);
 
+    IloNumArray xPlan  ;
+    IloNumArray yPlan  ;
+    double redcost = 0;
+    double objvalue = 0;
+    bool solutionFound ;
 
+    // Recherche par client
 
+    for (int i=1 ; i < I ; i++) {
 
+        if (print) cout << "client "<< i << endl;
 
-
-
-
-    while (!oneImprovingSolution && cas < nb_cas) { // Si on n'a pas trouvé de colonne améliorante dans le cas 1, on passe au cas 2: on cherche une colonne pour tous les pas de temps
-
-        cas ++ ;
-
-        if (Param.OneTimeStepPerIter) {
-            lastTimeStep = (lastTimeStep+1)%T;
-            min=lastTimeStep ;
-            max=min+1 ;
+        if (!Param.DynProgCustomer) {
+            (AlgoCplex[i])->updateObjCoefficients(inst, Param, dual_cost, Farkas) ;
+            xPlan = IloNumArray((AlgoCplex[i])->env, J) ;
+            yPlan = IloNumArray((AlgoCplex[i])->env, J) ;
+            solutionFound = (AlgoCplex[i])->findImprovingSolution(inst, dual_cost, objvalue) ;
         }
 
-        //cout << "cas: " << cas << endl ;
-
-        for (int t=min ; t < max ; t++) {
-
-            if (print) cout << "time "<< t << endl;
-
-            if (TimeSolNotFound.at(t) < 2 || cas==2 ) { // si un plan pour t a été généré au cours des 10 dernières itérations
-
-                ///// MISE A JOUR DES OBJECTIFS DES SOUS PROBLEMES
-                // cout << "mise à jour des couts, farkas=" << Farkas << endl;
-                if (!Param.DynProgTime) {
-                    (AlgoCplex.at(t))->updateObjCoefficients(inst, Param, dual_cost, Farkas) ;
-                }
-                else {
-                    (AlgoDynProg.at(t))->updateObjCoefficients(inst, Param, dual_cost, Farkas) ;
-                }
-
-                //// CALCUL D'UN PLAN DE COUT REDUIT MINIMUM
-                double objvalue = 0 ;
-                double temps ;
-                bool solutionFound;
-
-                if (!Param.DynProgTime) {
-                    solutionFound = (AlgoCplex.at(t))->findImprovingSolution(inst, dual_cost, objvalue, temps, 1);
-                }
-                else {
-                    solutionFound = (AlgoDynProg.at(t))->findImprovingSolution(inst, dual_cost, objvalue, temps, Param.heurPricingTime);
-                }
-                nbCallsToCplex++;
-                Master->cumul_resolution_pricing += temps ;
-
-
-                if (!solutionFound) {
-                    // Pricer detected an infeasibility : we should immediately stop pricing
-                    infeasibilityDetected = true ;
-                    break ;
-                }
-
-                if (objvalue < -epsilon) {
-                    oneImprovingSolution = true ;
-
-                    TimeSolNotFound.at(t) = 0 ;
-
-                    double realCost=0 ;
-                    double totalProd=0 ;
-
-                    IloNumArray upDownPlan ;
-                    IloNumArray powerPlan ;
-                    if (!Param.DynProgTime) {
-                        upDownPlan = IloNumArray((AlgoCplex.at(t))->env, n) ;
-                        powerPlan = IloNumArray((AlgoCplex.at(t))->env, n) ;
-                        (AlgoCplex.at(t))->getUpDownPlan(inst, dual_cost, upDownPlan, powerPlan,realCost, totalProd, Farkas) ;
-                    }
-                    else {
-                        upDownPlan = IloNumArray((AlgoDynProg.at(t))->env, n) ;
-                        powerPlan = IloNumArray((AlgoDynProg.at(t))->env, n) ;
-                        (AlgoDynProg.at(t))->getUpDownPlan(inst, dual_cost, upDownPlan, powerPlan, realCost, totalProd, Farkas) ;
-                    }
-
-                     //
-
-                    //cout << "total prod: " << totalProd << endl ;
-
-                    // if (print) {
-                         cout << "Minimum reduced cost plan: "<< objvalue << "for time " << t << endl ;
-                         for (int i=0 ; i < n ; i++) {
-                             cout << fabs(upDownPlan[i]) << " " ;
-                         }
-                         cout << endl ;
-                     //}
-
-
-
-
-                    int kmax = t ;
-                    int kmin=t ;
-
-                    if (Param.AddColumnToOtherCustomerSteps) {
-                        if (t < T-1) {
-                            if (inst->getD(t) < inst->getD(t+1)) {
-                                kmax = fmin(T-1, t+T/12) ;
-                            }
-                        }
-                        if (t>0) {
-                            if (inst->getD(t) < inst->getD(t-1)) {
-                                kmin = fmax(0, t-T/12) ;
-                            }
-                        }
-                    }
-
-                    for (int k=kmin ; k <= kmax; k++) {
-
-                        if (inst->getD(k) <= totalProd) {
-
-                            //  cout << "ajout maitre" << endl;
-
-                            /// AJOUT VARIABLE DANS LE MAITRE ////
-
-                            MasterCustomer_Variable* lambda = new MasterCustomer_Variable(k, upDownPlan);
-                            lambda->addPowerPlan(powerPlan);
-
-                            timeVarsToAdd.push_back(lambda) ;
-                        }
-
-                    }
-
-                }
-
-                else {
-                    if (Param.DontPriceAllTimeSteps) {
-                        TimeSolNotFound.at(t) ++;
-                    }
-                }
+        else { // résolution par programmation dynamique
+            (AlgoDynProg[i])->updateObjCoefficients(inst, Param, dual_cost, Farkas) ;
+            xPlan = IloNumArray((AlgoDynProg[i])->env, J) ;
+            yPlan = IloNumArray((AlgoCplex[i])->env, J) ;
+            solutionFound = (AlgoDynProg[i])->findImprovingSolution(inst, dual_cost, objvalue) ;
             }
+
+        if (!solutionFound) {
+            // Pricer detected an infeasibility : we should immediately stop pricing
+            infeasibilityDetected = true ;
+            break ;
+        }
+
+        // TODO : currentLowerBound += objvalue + dual_cost_time.Sigma[t] ;
+
+        if (objvalue < - Param.Epsilon) {
+
+            if (!Param.DynProgFacility) {
+                (AlgoCplex[i])->getSolution(inst, dual_cost, xPlan, yPlan, Farkas);
+            }
+            else{
+                (AlgoDynProg[i])->getSolution(inst, dual_cost, xPlan, yPlan, Farkas);
+            }
+
+            MasterCustomer_Variable* lambda = new MasterCustomer_Variable(i, xPlan, yPlan);
+            if (print) cout << "Plan found for client " << i << " with reduced cost = " << objvalue << " "  << endl ;
+
+            totalDualCost += objvalue;
+            customerVarsToAdd.push_back(lambda) ;
         }
     }
 
@@ -341,25 +258,25 @@ void ObjPricerCustomerRCFLP::pricingRCFLP( SCIP*              scip  , bool Farka
     cout << "infeasibility detected: " << infeasibilityDetected << endl;
     if (!infeasibilityDetected){
 
-        MasterCustomer_Variable* lambdaTime ;
+        MasterCustomer_Variable* lambdaCustomer ;
 
-        while (!timeVarsToAdd.empty()){
+        while (!customerVarsToAdd.empty()){
 
-            lambdaTime = timeVarsToAdd.front() ;
+            lambdaCustomer = customerVarsToAdd.front() ;
 
             //// CREATION D'UNE NOUVELLE VARIABLE
-            Master->initMasterCustomerVariable(scip, lambdaTime) ;
+            Master->initMasterCustomerVariable(scip, lambdaCustomer) ;
 
             /* add new variable to the list of variables to price into LP (score: leave 1 here) */
-            SCIP_RETCODE ajout = SCIPaddPricedVar(scip, lambdaTime->ptr, 1.0);
+            SCIP_RETCODE ajout = SCIPaddPricedVar(scip, lambdaCustomer->ptr, 1.0);
             cout << "ajout var par temps: " << ajout << endl;
 
             ///// ADD COEFFICIENTS TO DEMAND, POWER LIMITS and CONVEXITY CONSTRAINTS
-            Master->addCoefsToConstraints(scip, lambdaTime) ;
+            Master->addCoefsToConstraints(scip, lambdaCustomer) ;
 
-            timeColumns++;
+            customerColumns++;
 
-            timeVarsToAdd.pop_front() ;
+            customerVarsToAdd.pop_front() ;
         }
     }
 
@@ -375,40 +292,11 @@ void ObjPricerCustomerRCFLP::pricingRCFLP( SCIP*              scip  , bool Farka
 
 void ObjPricerCustomerRCFLP::addVarBound(SCIP_ConsData* consdata) {
 
-    int t = consdata->time ;
-    int i = consdata->unit ;
-
-    if (AlgoDynProg.at(t) != NULL) {
-        if (consdata->bound == 0) {
-            if (!Param.powerPlanGivenByMu) {
-                (AlgoDynProg.at(t))->W -= inst->getPmax(i) ;
-            }
-            (AlgoDynProg.at(t))->init.at(i) = 0 ;
-        }
-        else {
-            (AlgoDynProg.at(t))->init.at(i) = 1 ;
-        }
-    }
-    else {
         //A implémenter
-    }
 }
 
 void ObjPricerCustomerRCFLP::removeVarBound(SCIP_ConsData* consdata) {
 
-    int t = consdata->time ;
-    int i = consdata->unit ;
-
-    if (AlgoDynProg.at(t) != NULL) {
-        if (consdata->bound == 0) {
-            (AlgoDynProg.at(t))->W += inst->getPmax(i) ;
-        }
-
-        (AlgoDynProg.at(t))->init.at(i) = -1 ;
-    }
-    else {
+ 
         //A implémenter
-    }
 }
-
-

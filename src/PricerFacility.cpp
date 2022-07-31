@@ -25,13 +25,12 @@ ObjPricerFacility::ObjPricerFacility(
         ):
     ObjPricerRCFLP(scip, pp_name, instance, param)
 {
+    int J = inst->getJ();
     Master=M ;
     AlgoCplex = vector<CplexPricingAlgoFacility*>(J, NULL) ;
     AlgoDynProg = vector<DynProgPricingAlgoFacility*>(J, NULL) ;
 
-    J = inst->getJ();
-
-    if (!Param.DynProg) {
+    if (!Param.DynProgFacility) {
         for (int j = 0 ; j < J ; j++) {
             AlgoCplex[j] = new CplexPricingAlgoFacility(inst, param, j) ;
         }
@@ -139,7 +138,7 @@ SCIP_RETCODE ObjPricerFacility::scip_farkas( SCIP* scip, SCIP_PRICER* pricer, SC
 
 
 
-void ObjPricerFacility::updateDualCosts(SCIP* scip, DualCosts & dual_cost, bool Farkas) {
+void ObjPricerFacility::updateDualCosts(SCIP* scip, DualCostsFacility & dual_cost, bool Farkas) {
     ///// RECUPERATION DES COUTS DUAUX
 
     int print = 0 ;
@@ -187,130 +186,88 @@ void ObjPricerFacility::pricingRCFLP( SCIP*              scip  , bool Farkas    
     // Cout duaux
     DualCostsFacility dual_cost = DualCostsFacility(inst) ;
     updateDualCosts(scip, dual_cost, Farkas);
+    
+    IloNumArray xPlan  ;
+    IloNumArray yPlan  ;
+    double redcost = 0;
+    double objvalue = 0;
+    bool solutionFound ;
 
+    // Recherche par facility
 
+    for (int j = 0 ; j < J ; j++) {
 
+        if (print) cout << "facility "<< j << endl;
 
-
-
-
-
-
-
-
-
-
-
-    for (int s = 0 ; s < S ; s++) {
-
-       //cout << "site "<< s << endl;
-
-        ///// MISE A JOUR DES OBJECTIFS DES SOUS PROBLEMES
-       // cout << "mise à jour des couts, farkas=" << Farkas << endl;
-        if (!Param.DynProg) {
-            (AlgoCplex[s])->updateObjCoefficients(inst, Param, dual_cost, Farkas) ;
-        }
-        else {
-            //nothing to do
-           // (AlgoDynProg[s])->updateObjCoefficients(inst, Param, dual_cost, Farkas) ;
-
-        }
-
-        //// CALCUL D'UN PLAN DE COUT REDUIT MINIMUM
-        double objvalue = 0 ;
-        IloNumArray upDownPlan  ;
-        IloNumArray powerPlan  ;
-        bool solutionFound ;
-
-
-        if (!Param.DynProg) {
-            upDownPlan = IloNumArray((AlgoCplex[s])->env, Param.nbUnits(s)*T) ;
-            solutionFound = (AlgoCplex[s])->findUpDownPlan(inst, dual_cost, upDownPlan, objvalue) ;
-            for (int index=0 ; index <Param.nbUnits(s)*T ; index++ ) {
-                if (upDownPlan[index]>1-epsilon) {
-                    upDownPlan[index]=1 ;
-                }
-                if (upDownPlan[index]< epsilon) {
-                    upDownPlan[index]=0 ;
-                }
+        if (!Param.DynProgFacility) {
+            (AlgoCplex[j])->updateObjCoefficients(inst, Param, dual_cost, Farkas) ;
+            xPlan = IloNumArray((AlgoCplex[j])->env, I) ;
+            if (Param.compactCapacityConstraints){
+                yPlan = IloNumArray((AlgoCplex[j])->env, 1) ;
             }
+            solutionFound = (AlgoCplex[j])->findImprovingSolution(inst, dual_cost, objvalue) ;
         }
 
         else { // résolution par programmation dynamique
-
-            upDownPlan = IloNumArray((AlgoDynProg[s])->env, Param.nbUnits(s)*T) ;
-            solutionFound = (AlgoDynProg.at(s))->findImprovingSolution(inst, dual_cost, objvalue);
-            (AlgoDynProg.at(s))->getUpDownPlan(inst, upDownPlan) ;
-
-            cout << "DP resolution done" << endl ;
-
+            (AlgoDynProg[j])->updateObjCoefficients(inst, Param, dual_cost, Farkas) ;
+            xPlan = IloNumArray((AlgoDynProg[j])->env, I) ;
+            if (Param.compactCapacityConstraints){
+                yPlan = IloNumArray((AlgoDynProg[j])->env, 1) ;
+            }
+            solutionFound = (AlgoDynProg[j])->findImprovingSolution(inst, dual_cost, objvalue) ;
         }
-
-        // cout << "solution found: " << solutionFound << endl;
+        
         if (!solutionFound) {
             // Pricer detected an infeasibility : we should immediately stop pricing
             infeasibilityDetected = true ;
             break ;
         }
 
-        if (print) cout << "Minimum reduced cost plan: "<< objvalue << endl ;
+        // TODO : currentLowerBound += objvalue + dual_cost.Sigma[s] ;
 
-        if (print) {
-            for (int t=0 ; t < T ; t++)  {
-                for (int i=0 ; i < Param.nbUnits(s) ; i++) {
-                    cout << fabs(upDownPlan[i*T+t]) << " " ;
-                }
-                //cout << endl ;
+        if (objvalue < - Param.Epsilon) {
+
+            if (!Param.DynProgFacility) {
+                (AlgoCplex[j])->getSolution(inst, dual_cost, xPlan, yPlan, Farkas);
             }
-            cout << endl ;
-        }
-
-        cout << endl ;
-
-        //if (SCIPisNegative(scip, objvalue)) {
-
-        if (objvalue < -epsilon ) {
-
-            Master_Variable* lambda = new Master_Variable(s, upDownPlan);
-            cout << "Plan found for site " << s << " with reduced cost = " << objvalue << " "  << endl ;
-
-            if (Param.powerPlanGivenByLambda && !Param.DynProg) {
-                powerPlan = IloNumArray((AlgoCplex[s])->env, Param.nbUnits(s)*T) ;
-                (AlgoCplex[s]->cplex).getValues(AlgoCplex[s]->p, powerPlan) ;
-                cout << "power plan: " << powerPlan << endl;
-                lambda->addPowerPlan(powerPlan);
+            else{
+                (AlgoDynProg[j])->getSolution(inst, dual_cost, xPlan, yPlan, Farkas);
             }
 
-            siteVarsToAdd.push_back(lambda) ;
+            MasterFacility_Variable* lambda = new MasterFacility_Variable(j, xPlan, yPlan);
+            if (print) cout << "Plan found for facility " << j << " with reduced cost = " << objvalue << " "  << endl ;
+
+            totalDualCost += objvalue;
+            facilityVarsToAdd.push_back(lambda) ;
         }
     }
+
 
     // If we detected an infeasibility in one of the pricers, we add no variables to the Master
     // This will force termination of column generation, the master problem will remain infeasible
     // And this will cause the node to be pruned
 
-    cout << "infeasibility detected: " << infeasibilityDetected << endl;
     if (!infeasibilityDetected){
 
-        Master_Variable* lambdaSite ;
+        MasterFacility_Variable* lambdaFacility ;
         
-        while (!siteVarsToAdd.empty()){
+        while (!facilityVarsToAdd.empty()){
 
-            lambdaSite = siteVarsToAdd.front() ;
+            lambdaFacility = facilityVarsToAdd.front() ;
 
             //// CREATION D'UNE NOUVELLE VARIABLE DANS LE MASTER
-            Master->initMasterVariable(scip, inst, lambdaSite) ;
+            Master->initMasterFacilityVariable(scip, lambdaFacility) ;
 
             /* add new variable to the list of variables to price into LP (score: leave 1 here) */
-            SCIP_RETCODE ajout = SCIPaddPricedVar(scip, lambdaSite->ptr, 1.0);
-            cout << "ajout var par unité: " << ajout << endl;
+            SCIP_RETCODE ajout = SCIPaddPricedVar(scip, lambdaFacility->ptr, 1.0);
+            cout << "ajout var par facility: " << ajout << endl;
 
             ///// ADD COEFFICIENTS TO CONVEXITY and TIME/SITE EQUALITY CONSTRAINTS
-            Master->addCoefsToConstraints(scip, lambdaSite, inst) ;
+            Master->addCoefsToConstraints(scip, lambdaFacility) ;
 
-            unitColumns++;
+            facilityColumns++;
 
-            siteVarsToAdd.pop_front() ;
+            facilityVarsToAdd.pop_front() ;
         }
     }
 
@@ -323,28 +280,14 @@ void ObjPricerFacility::pricingRCFLP( SCIP*              scip  , bool Farkas    
 
 }
 
+
 void ObjPricerFacility::addVarBound(SCIP_ConsData* consdata) {
 
-    cout << "Enter addVarBound:" << endl;
-
-    if (!Param.DynProg) {
-
-    }
-    else {
-
-        cout << "for unit " << consdata->site << ", at time " << consdata->time <<", bound set to " << consdata->bound << endl ;
-        cout << "End addVarBound" << endl ;
-    }
 }
 
 void ObjPricerFacility::removeVarBound(SCIP_ConsData* consdata) {
 
-    if (!Param.DynProg) {
 
-    }
-    else {
-
-    }
 }
 
 

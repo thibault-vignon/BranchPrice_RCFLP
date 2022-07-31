@@ -57,13 +57,13 @@ class CplexPricingAlgoFacility {
 
   CplexPricingAlgoFacility(InstanceRCFLP* inst, const Parameters & Param, int f);
 
-  void updateObjCoefficients(InstanceRCFLP* inst, const DualCostsFacility & Dual, bool Farkas);
+  void updateObjCoefficients(InstanceRCFLP* inst, const Parameters & Param, const DualCostsFacility & Dual, bool Farkas);
 
   // Launch Cplex solver and get back an optimal solution
-  bool findImprovingSolution(InstanceRCFLP* inst, const DualCostsFacility & Dual, double& objvalue, double & temps_resolution) ;
+  bool findImprovingSolution(InstanceRCFLP* inst, const DualCostsFacility & Dual, double& objvalue) ;
   // returns true if an improving solution has been found. objvalue is updated in this case
 
-  void getSolution(InstanceRCFLP* inst, const DualCostsFacility & Dual, IloNumArray xPlan, IloNumArray yPlan, double& realCost, bool Farkas) ; //updates plans and realCost
+  void getSolution(InstanceRCFLP* inst, const DualCostsFacility & Dual, IloNumArray xPlan, IloNumArray yPlan, bool Farkas) ; //updates plans and realCost
 
 };
 
@@ -79,7 +79,7 @@ class CplexPricingAlgoCustomer {
   IloCplex cplex;
 
   IloBoolVarArray x;
-  IloNumVarArray y ;
+  IloBoolVarArray y ;
 
   double cpuTime ;
 
@@ -88,13 +88,13 @@ class CplexPricingAlgoCustomer {
 
   CplexPricingAlgoCustomer(InstanceRCFLP* inst, const Parameters & par, int c);
 
-  void updateObjCoefficients(InstanceRCFLP* inst, const DualCostsCustomer & Dual, bool Farkas);
+  void updateObjCoefficients(InstanceRCFLP* inst, const Parameters & Param, const DualCostsCustomer & Dual, bool Farkas);
 
   // Launch Cplex solver and get back an optimal up/down plan
-  bool findImprovingSolution(InstanceRCFLP* inst, const DualCostsCustomer & Dual, double& objvalue, double & temps_resolution) ;
+  bool findImprovingSolution(InstanceRCFLP* inst, const DualCostsCustomer & Dual, double& objvalue) ;
   // returns true if an improving solution has been found. objvalue is updated in this case
 
-  void getSolution(InstanceRCFLP* inst, const DualCostsCustomer & Dual, IloNumArray xPlan, IloNumArray yPlan, double& realCost, bool Farkas) ; //updates plans and realCost
+  void getSolution(InstanceRCFLP* inst, const DualCostsCustomer & Dual, IloNumArray xPlan, IloNumArray yPlan, bool Farkas) ; //updates plans and realCost
 };
 
 
@@ -115,10 +115,12 @@ class DynProgPricingAlgoFacility {
 
   DynProgPricingAlgoFacility(InstanceRCFLP* inst, const Parameters & par, int f); // initialise les vecteurs
 
-  bool findImprovingSolution(InstanceRCFLP* inst, const DualCostsFacility & Dual, double& objvalue, double & temps_resolution) ;
+  void updateObjCoefficients(InstanceRCFLP* inst, const Parameters & Param, const DualCostsFacility & Dual, bool Farkas);
+
+  bool findImprovingSolution(InstanceRCFLP* inst, const DualCostsFacility & Dual, double& objvalue) ;
   // returns true if an improving solution has been found. objvalue is updated in this case
 
-  void getSolution(InstanceRCFLP* inst, const DualCostsFacility & Dual, IloNumArray xPlan, IloNumArray yPlan, double& realCost, bool Farkas) ;//updates plans and realCost
+  void getSolution(InstanceRCFLP* inst, const DualCostsFacility & Dual, IloNumArray xPlan, IloNumArray yPlan, bool Farkas) ;//updates plans and realCost
 };
 
 
@@ -139,13 +141,13 @@ class DynProgPricingAlgoCustomer { // codé dans le cas Pmin=Pmax pour voir si c
 
   DynProgPricingAlgoCustomer(InstanceRCFLP* inst, const Parameters & par, int c);
 
-  void updateObjCoefficients(InstanceRCFLP* inst, const DualCostsCustomer & Dual, bool Farkas);
+  void updateObjCoefficients(InstanceRCFLP* inst, const Parameters & Param, const DualCostsCustomer & Dual, bool Farkas);
 
-  bool findImprovingSolution(InstanceRCFLP* inst, const DualCostsCustomer & Dual, double& objvalue, double & temps_resolution) ;
+  bool findImprovingSolution(InstanceRCFLP* inst, const DualCostsCustomer & Dual, double& objvalue) ;
   // computes Bellman table (vector Table)
   // returns true if an improving solution has been found. objvalue is updated in this case
 
-  void getSolution(InstanceRCFLP* inst, const DualCostsCustomer & Dual, IloNumArray xPlan, IloNumArray yPlan, double& realCost, bool Farkas) ; //updates plans and realCost
+  void getSolution(InstanceRCFLP* inst, const DualCostsCustomer & Dual, IloNumArray xPlan, IloNumArray yPlan, bool Farkas) ; //updates plans and realCost
 };
 
 
