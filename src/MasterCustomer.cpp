@@ -22,7 +22,7 @@ MasterCustomer_Variable::MasterCustomer_Variable(int c, IloNumArray x, IloNumArr
 void MasterCustomer_Variable::computeCost(InstanceRCFLP* inst, const Parameters & Param) {
     cost = 0;
 
-    // TODO
+    // TODO : repartition
 
     if (Param.doubleDecompo){
         for (int j = 0 ; j < inst->getJ() ; j++) {
@@ -48,11 +48,18 @@ void MasterCustomer_Model::addCoefsToConstraints(SCIP* scip, MasterCustomer_Vari
 
     int c = lambda->customer ;
 
-    /* add coefficient to the convexity constraint for site s */
+    /* add coefficient to the convexity constraint */
     SCIPaddCoefLinear(scip, convexity_cstr.at(c), lambda->ptr, 1.0) ;
 
-    // TODO : other constraints
-
+    /* add coefficients to the capacity constraints */
+    for (int j = 0 ; j<J ; j++){
+        if (lambda->x_plan[j] > 1 - Param.Epsilon){
+            SCIPaddCoefLinear(scip, capacity_cstr.at(j), lambda->ptr, - inst->getd(c)) ;
+        }
+        if (lambda->y_plan[j] > 1 - Param.Epsilon){
+            SCIPaddCoefLinear(scip, capacity_cstr.at(j), lambda->ptr, inst->getc(j)) ;
+        }
+    }
 }
 
 
@@ -110,6 +117,7 @@ void MasterCustomer_Model::createColumns(SCIP* scip, IloNumArray x, IloNumArray 
 
 MasterCustomer_Model::MasterCustomer_Model(InstanceRCFLP* instance, const Parameters & Parametres) : Master_Model(Parametres, instance) {
     convexity_cstr.resize(I, (SCIP_CONS*) NULL) ;
+    capacity_cstr.resize(J, (SCIP_CONS*) NULL) ;
 }
 
 void  MasterCustomer_Model::initScipMasterCustomerModel(SCIP* scip) {
@@ -144,7 +152,28 @@ void  MasterCustomer_Model::initScipMasterCustomerModel(SCIP* scip) {
         convexity_cstr.at(i) = con;
     }
 
-    // TODO : other constraints
+    ///// Capacity constraint ////
+    char con_name_capacity[255];
+    for (int j = 0 ; j<J ; j++)
+    {
+        SCIP_CONS* con = NULL;
+        (void) SCIPsnprintf(con_name_capacity, 255, "Capacity(%d)", j); // nom de la contrainte
+        SCIPcreateConsLinear( scip, &con, con_name_capacity, 0, NULL, NULL,
+                              0.0,   // lhs
+                              SCIPinfinity(scip),   // rhs  
+                              true,  /* initial */
+                              false, /* separate */
+                              true,  /* enforce */
+                              true,  /* check */
+                              true,  /* propagate */
+                              false, /* local */
+                              true,  /* modifiable */
+                              false, /* dynamic */
+                              false, /* removable */
+                              false  /* stickingatnode */ );
+        SCIPaddCons(scip, con);
+        capacity_cstr.at(j) = con;
+    }
 
     ///////////////////////////////////////////////////////////////
     //////////   MASTER LAMBDA VARIABLES INITIALIZATION   /////////
@@ -160,13 +189,13 @@ void  MasterCustomer_Model::initScipMasterCustomerModel(SCIP* scip) {
 
             // TODO : Initialize plans corresponding to feasible solution
 
-            MasterCustomer_Variable* lambda = new MasterCustomer_Variable(i, x_plan, y_plan);
+            // MasterCustomer_Variable* lambda = new MasterCustomer_Variable(i, x_plan, y_plan);
 
-            initMasterCustomerVariable(scip, lambda);
+            // initMasterCustomerVariable(scip, lambda);
 
-            SCIPaddVar(scip, lambda->ptr);
+            // SCIPaddVar(scip, lambda->ptr);
 
-            addCoefsToConstraints(scip, lambda) ;
+            // addCoefsToConstraints(scip, lambda) ;
         }
     }
 }

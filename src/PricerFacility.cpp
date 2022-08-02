@@ -59,6 +59,7 @@ SCIP_DECL_PRICERINIT(ObjPricerFacility::scip_init)
 {
     //cout<<"**************PRICER INIT************ "<<endl;
 
+    int I = inst->getI() ;
     int J = inst->getJ() ;
 
     //convexity constraints
@@ -66,7 +67,17 @@ SCIP_DECL_PRICERINIT(ObjPricerFacility::scip_init)
         SCIPgetTransformedCons(scip, Master->convexity_cstr[j], &(Master->convexity_cstr[j]));
     }
 
-    // TODO : other constraints
+    //assignment constraints
+    for (int i = 0 ; i < I ; i++) {
+        SCIPgetTransformedCons(scip, Master->assignment_cstr[i], &(Master->assignment_cstr[i]));
+    }
+
+    //reliability constraints
+    for (int j = 0 ; j < J ; j++) {
+        for (int i = 0 ; i < I ; i++) {
+            SCIPgetTransformedCons(scip, Master->reliability_cstr[j*I + i], &(Master->reliability_cstr[j*I + i]));
+        }
+    }
 
     cout<<"**************FIN PRICER INIT************ "<<endl ;
 
@@ -141,7 +152,8 @@ SCIP_RETCODE ObjPricerFacility::scip_farkas( SCIP* scip, SCIP_PRICER* pricer, SC
 void ObjPricerFacility::updateDualCosts(SCIP* scip, DualCostsFacility & dual_cost, bool Farkas) {
     ///// RECUPERATION DES COUTS DUAUX
 
-    int print = 0 ;
+    int print = 1 ;
+    int I = inst->getI() ;
     int J = inst->getJ() ;
 
     //couts duaux contrainte convexité
@@ -152,11 +164,33 @@ void ObjPricerFacility::updateDualCosts(SCIP* scip, DualCostsFacility & dual_cos
         else{
             dual_cost.Sigma[j] = SCIPgetDualfarkasLinear(scip, Master->convexity_cstr[j]);
         }
-        if (print) cout << "sigma: " << dual_cost.Sigma[j] <<endl;
+        if (print) cout << "sigma(" << j << ") = "<< dual_cost.Sigma[j] <<endl;
     }
 
-    // TODO : autres contraintes
+    //couts duaux contrainte assignment
+    for (int i = 0 ; i < I ; i++) {
+        if (!Farkas) {
+            dual_cost.Mu[i] = SCIPgetDualsolLinear(scip, Master->assignment_cstr[i]);
+        }
+        else{
+            dual_cost.Mu[i] = SCIPgetDualfarkasLinear(scip, Master->assignment_cstr[i]);
+        }
+        if (print) cout << "mu(" << i << ") = " << dual_cost.Mu[i] <<endl;
+    }
 
+    //couts duaux contrainte fiabilité
+    for (int j = 0 ; j < J ; j++) {
+        for (int i = 0 ; i < I ; i++) {
+            if (!Farkas) {
+                dual_cost.Nu[j*I + i] = SCIPgetDualsolLinear(scip, Master->reliability_cstr.at(j*I + i) );
+            }
+            else{
+                dual_cost.Nu[j*I + i] = SCIPgetDualfarkasLinear(scip, Master->reliability_cstr.at(j*I + i) );
+            }
+            if (print)
+                cout << "nu(" << j <<"," << i <<") = " << dual_cost.Nu[j*I + i] <<endl;
+        }
+    }
 }
 
 void ObjPricerFacility::pricingRCFLP( SCIP*              scip  , bool Farkas             /**< SCIP data structure */)
@@ -248,7 +282,7 @@ void ObjPricerFacility::pricingRCFLP( SCIP*              scip  , bool Farkas    
     // And this will cause the node to be pruned
 
     if (!infeasibilityDetected){
-
+        
         MasterFacility_Variable* lambdaFacility ;
         
         while (!facilityVarsToAdd.empty()){

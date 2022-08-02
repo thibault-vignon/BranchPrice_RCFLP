@@ -16,7 +16,7 @@ void MasterFacility_Variable::computeCost(InstanceRCFLP* inst, const Parameters 
     //compute cost of up/down plan lambda: fixed cost (including minimum power output cost) and start up cost
     cost=0 ;
 
-    // TODO
+    // TODO : repartition
 
     if (Param.doubleDecompo){
         for (int i=0 ; i < inst->getI() ; i++) {
@@ -46,7 +46,28 @@ void MasterFacility_Model::addCoefsToConstraints(SCIP* scip, MasterFacility_Vari
     /* add coefficient to the convexity constraint for site s */
     SCIPaddCoefLinear(scip, convexity_cstr[f], lambda->ptr, 1.0) ;
 
-    // TODO : other constraints
+    /* add coefficient to the assignment constraints*/
+    for (int i = 0 ; i<I ; i++){
+        if (lambda->x_plan[i] > 1 - Param.Epsilon){
+            SCIPaddCoefLinear(scip, assignment_cstr[i], lambda->ptr, 1.0) ;
+        }
+    }
+
+    /* add coefficients to the reliability constraints*/
+    for (int i = 0 ; i<I ; i++){
+
+        if (lambda->x_plan[i] > 1 - Param.Epsilon){
+            SCIPaddCoefLinear(scip, reliability_cstr[f*I + i], lambda->ptr, - inst->getd(i) * inst->getK()) ;
+        }
+
+        for (int j = 0 ; j<J ; j++){
+            for (int indice=0; indice<inst->getv(); indice++){
+                if ( (inst->getV(j)[indice] == f) && (lambda->y_plan[0] > 1 - Param.Epsilon) ){
+                    SCIPaddCoefLinear(scip, reliability_cstr[j*I + i], lambda->ptr, inst->getc(f)) ;
+                }
+            }
+        }
+    }
 }
 
 
@@ -80,9 +101,11 @@ void MasterFacility_Model::initMasterFacilityVariable(SCIP* scip, MasterFacility
 
 MasterFacility_Model::MasterFacility_Model(InstanceRCFLP* inst, const Parameters & Parametres) : Master_Model(Parametres, inst) {
     convexity_cstr.resize(J, (SCIP_CONS*) NULL) ;
+    reliability_cstr.resize(I*J, (SCIP_CONS*) NULL) ;
+    assignment_cstr.resize(I, (SCIP_CONS*) NULL) ;
 }
 
-void  MasterFacility_Model::InitScipMasterFacilityModel(SCIP* scip, InstanceRCFLP* inst) {
+void  MasterFacility_Model::initScipMasterFacilityModel(SCIP* scip) {
 
 
     ////////////////////////////////////////////////////////////////
@@ -115,7 +138,55 @@ void  MasterFacility_Model::InitScipMasterFacilityModel(SCIP* scip, InstanceRCFL
         convexity_cstr[j] = con;
     }
 
-    // TODO : other constraints
+    cout << "assignment cons" << endl ;
+
+    ///// Assignment constraint ////
+    char con_name_assignment[255];
+    for (int i = 0 ; i<I ; i++)
+    {
+        SCIP_CONS* con = NULL;
+        (void) SCIPsnprintf(con_name_assignment, 255, "Assignment(%d)", i); // nom de la contrainte
+        SCIPcreateConsLinear( scip, &con, con_name_assignment, 0, NULL, NULL,
+                              1.0,   // lhs
+                              1.0,   // rhs  SCIPinfinity(scip) if >=1
+                              true,  /* initial */
+                              false, /* separate */
+                              true,  /* enforce */
+                              true,  /* check */
+                              true,  /* propagate */
+                              false, /* local */
+                              true,  /* modifiable */
+                              false, /* dynamic */
+                              false, /* removable */
+                              false  /* stickingatnode */ );
+        SCIPaddCons(scip, con);
+        assignment_cstr[i] = con;
+    }
+
+    ///// Reliability constraint ////
+    char con_name_reliability[255];
+    for (int j = 0 ; j<J ; j++){
+        for (int i = 0 ; i<I ; i++)
+        {
+            SCIP_CONS* con = NULL;
+            (void) SCIPsnprintf(con_name_reliability, 255, "Reliability(%d,%d)", j, i); // nom de la contrainte
+            SCIPcreateConsLinear( scip, &con, con_name_reliability, 0, NULL, NULL,
+                                0.0,   // lhs
+                                SCIPinfinity(scip),   // rhs
+                                true,  /* initial */
+                                false, /* separate */
+                                true,  /* enforce */
+                                true,  /* check */
+                                true,  /* propagate */
+                                false, /* local */
+                                true,  /* modifiable */
+                                false, /* dynamic */
+                                false, /* removable */
+                                false  /* stickingatnode */ );
+            SCIPaddCons(scip, con);
+            reliability_cstr[j*I + i] = con;
+        }
+    }
 
     ///////////////////////////////////////////////////////////////
     //////////   MASTER LAMBDA VARIABLES INITIALIZATION   /////////
@@ -131,13 +202,13 @@ void  MasterFacility_Model::InitScipMasterFacilityModel(SCIP* scip, InstanceRCFL
 
             // TODO : Initialize plans corresponding to feasible solution
 
-            MasterFacility_Variable* lambda = new MasterFacility_Variable(j, x_plan, y_plan);
+            // MasterFacility_Variable* lambda = new MasterFacility_Variable(j, x_plan, y_plan);
 
-            initMasterFacilityVariable(scip, lambda);
+            // initMasterFacilityVariable(scip, lambda);
 
-            SCIPaddVar(scip, lambda->ptr);
+            // SCIPaddVar(scip, lambda->ptr);
 
-            addCoefsToConstraints(scip, lambda) ;
+            // addCoefsToConstraints(scip, lambda) ;
         }
     }
 }

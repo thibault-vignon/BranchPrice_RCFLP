@@ -136,6 +136,8 @@ public:
 
     // Keep a pointer on every constraint of the Master program
     vector<SCIP_CONS*> convexity_cstr;
+    vector<SCIP_CONS*> assignment_cstr;
+    vector<SCIP_CONS*> reliability_cstr;
 
     // Keep info on every variables of the Master program
     //NB: le fait d'utiliser une liste ne permet pas de supprimer des variables
@@ -144,7 +146,7 @@ public:
     MasterFacility_Model(InstanceRCFLP* inst, const Parameters & Param) ;
 
     void addCoefsToConstraints(SCIP* scip, MasterFacility_Variable* lambda) ;
-    void  InitScipMasterFacilityModel(SCIP* scip, InstanceRCFLP* inst);
+    void initScipMasterFacilityModel(SCIP* scip);
     void initMasterFacilityVariable(SCIP* scip, MasterFacility_Variable* lambda) ;
     void createColumns(SCIP* scip, IloNumArray x, IloNumArray y) ;
 
@@ -167,6 +169,7 @@ public:
 
     // Keep a pointer on every constraint of the MasterCustomer program 
     vector<SCIP_CONS*> convexity_cstr;
+    vector<SCIP_CONS*> capacity_cstr;
 
     // Keep informations on every variables of the Master program
     //NB: le fait d'utiliser une liste ne permet pas de supprimer des variables
@@ -218,7 +221,7 @@ public:
 
     void addCoefsToConstraints_customerVar(SCIP* scip, MasterCustomer_Variable* lambda) ;
 
-    void initScipMasterDoubleModel(SCIP* scip, InstanceRCFLP* inst);
+    void initScipMasterDoubleModel(SCIP* scip);
     void initMasterFacilityVariable(SCIP* scip, MasterFacility_Variable* lambda) ;
     void initMasterCustomerVariable(SCIP* scip, MasterCustomer_Variable* lambda) ;
     void createColumns(SCIP* scip, IloNumArray x, IloNumArray p) ;

@@ -62,7 +62,7 @@ int main(int argc, char** argv)
     //////  PARAMETERS    /////
     ///////////////////////////
 
-    Parameters param = init_parameters(inst, met);
+    Parameters Param = init_parameters(inst, met);
     cout << "met = " << met << endl;
 
     ////////////////////////////////////
@@ -125,7 +125,7 @@ int main(int argc, char** argv)
 
 
     // resolution parameters (time and node limits)
-    SCIPsetLongintParam(scip, "limits/nodes", param.nodeLimit);
+    SCIPsetLongintParam(scip, "limits/nodes", Param.nodeLimit);
     SCIPsetRealParam(scip, "limits/time", 3600);
 
     // Changements pour rendre le code compatible avec scip-8.0.0
@@ -138,21 +138,90 @@ int main(int argc, char** argv)
     //SCIPsetBoolParam(scip, "display/lpinfo", TRUE);
 
     /* create empty problem */
-    SCIPcreateProb(scip, "UCP", 0, 0, 0, 0, 0, 0, 0);
+    SCIPcreateProb(scip, "RCFLP", 0, 0, 0, 0, 0, 0, 0);
 
     ////////////////////////////////////////////////////////
     //////  MASTER & PRICER PROBLEMS INITIALIZATION    /////
     ////////////////////////////////////////////////////////
 
 
-
-
-
-
     // frontal resolution with Cplex to verify results
-    CplexChecker checker = CplexChecker(inst, param) ;
-    
+    CplexChecker checker = CplexChecker(inst, Param) ;
     cout << checker.getIntegerObjValue() << endl;
+
+    // create master and pricing classes
+    Master_Model* Master_ptr;
+    ObjPricerRCFLP* Pricer = NULL ;
+
+    static const char* PRICER_NAME = "Pricer_RCFLP";
+
+
+    if (Param.doubleDecompo){
+
+        Master_ptr = new MasterDouble_Model(inst, Param) ;
+        MasterDouble_Model* MD ;
+        MD = dynamic_cast<MasterDouble_Model*> (Master_ptr) ;
+
+        if (MD != NULL) {
+
+            ///Initialisation du master
+            MD->initScipMasterDoubleModel(scip);
+
+            /// Initialisation du pricer
+            Pricer = new ObjPricerDouble(scip, PRICER_NAME, MD, inst, Param);
+            SCIPincludeObjPricer(scip, Pricer, true);
+            SCIPactivatePricer(scip, SCIPfindPricer(scip, PRICER_NAME));
+
+        }
+
+    }
+
+    else if (Param.FacilityDecompo){
+
+        Master_ptr = new MasterFacility_Model(inst, Param) ;
+        MasterFacility_Model* MF ;
+        MF = dynamic_cast<MasterFacility_Model*> (Master_ptr) ;
+
+        if (MF != NULL) {
+
+            ///Initialisation du master
+            MF->initScipMasterFacilityModel(scip);
+
+            /// Initialisation du pricer
+            Pricer = new ObjPricerFacility(scip, PRICER_NAME, MF, inst, Param);
+            SCIPincludeObjPricer(scip, Pricer, true);
+            SCIPactivatePricer(scip, SCIPfindPricer(scip, PRICER_NAME));
+
+        }
+    }
+
+    else {
+
+        Master_ptr = new MasterCustomer_Model(inst, Param) ;
+        MasterCustomer_Model* MC ;
+        MC = dynamic_cast<MasterCustomer_Model*> (Master_ptr) ;
+
+        if (MC != NULL) {
+
+            ///Initialisation du master
+            MC->initScipMasterCustomerModel(scip);
+
+            /// Initialisation du pricer
+            Pricer = new ObjPricerCustomer(scip, PRICER_NAME, MC, inst, Param);
+            SCIPincludeObjPricer(scip, Pricer, true);
+            SCIPactivatePricer(scip, SCIPfindPricer(scip, PRICER_NAME));
+
+        }
+
+    }
+
+
+
+    if (Param.ColumnGeneration) {
+
+        cout << "resolution..." << endl ;
+        SCIPsolve(scip);
+    }
 
 }
 

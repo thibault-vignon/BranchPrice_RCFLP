@@ -134,7 +134,7 @@ MasterDouble_Model::MasterDouble_Model(InstanceRCFLP* inst, const Parameters & P
     eq_customer_facility_y.resize(I*J, (SCIP_CONS*) NULL) ;
 }
 
-void  MasterDouble_Model::initScipMasterDoubleModel(SCIP* scip, InstanceRCFLP* inst) {
+void  MasterDouble_Model::initScipMasterDoubleModel(SCIP* scip) {
 
     ////////////////////////////////////////////////////////////////
     /////////////   MASTER CONSTRAINT INITIALIZATION   /////////////

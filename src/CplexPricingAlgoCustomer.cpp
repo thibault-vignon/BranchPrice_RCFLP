@@ -8,10 +8,12 @@ DualCostsCustomer::DualCostsCustomer(InstanceRCFLP* inst) {
     int I = inst->getI() ;
     int J = inst->getJ() ;
 
-    Sigma.resize(J, 0) ;
+    Sigma.resize(I, 0) ;
 
     Omega1.resize(I*J, 0) ;
     Omega2.resize(I*J, 0) ;
+
+    Gamma.resize(J, 0) ;
 }
 
 
@@ -78,11 +80,79 @@ void CplexPricingAlgoCustomer::updateObjCoefficients(InstanceRCFLP* inst, const 
     int I = inst->getI() ;
     int J = inst->getJ() ;
 
-    for (int j=0 ; j<J ; j++) {
+    if (!Farkas){
+        for (int j=0 ; j<J ; j++) {
 
-            obj.setLinearCoef(x[j], BaseObjCoefX.at(j) );
-            obj.setLinearCoef(y[j], BaseObjCoefY.at(j) ) ;
+            if (Param.doubleDecompo){
+                obj.setLinearCoef(x[j], BaseObjCoefX.at(j) + Dual.Omega1[j*I + customer]);
+                if (Param.compactCapacityConstraints){
+                    obj.setLinearCoef(y[j], BaseObjCoefY.at(j) + Dual.Omega2[j*I + customer]);
+                }
+                else {
+                    if (customer > 0){
+                        obj.setLinearCoef(y[j], BaseObjCoefY.at(j) + Dual.Omega2[j*I + customer]);
+                    } 
+                    else {
+                        double sum = 0;
+                        for (int i=1 ; i < inst->getI() ; i++) {
+                            sum += - Dual.Omega2[j*I + i] ;
+                        }
+                        obj.setLinearCoef(y[j], BaseObjCoefY.at(j) + sum);
+                    }
+                }
+            }
 
+            else {
+                obj.setLinearCoef(x[j], BaseObjCoefX.at(j) + inst->getd(customer) * Dual.Gamma[j]);
+                if (customer > 0){
+                    obj.setLinearCoef(y[j], BaseObjCoefY.at(j) - inst->getc(j) * Dual.Gamma[j] + Dual.Omega2[j*I + customer]);
+                } 
+                else {
+                    double sum = 0;
+                    for (int i=1 ; i < inst->getI() ; i++) {
+                        sum += - Dual.Omega2[j*I + i] ;
+                    }
+                    obj.setLinearCoef(y[j], BaseObjCoefY.at(j) - inst->getc(j) * Dual.Gamma[j] + sum);
+                }
+            }
+        }
+    }
+    else {
+        for (int j=0 ; j<J ; j++) {
+
+            if (Param.doubleDecompo){
+                obj.setLinearCoef(x[j], Dual.Omega1[j*I + customer]);
+                if (Param.compactCapacityConstraints){
+                    obj.setLinearCoef(y[j], Dual.Omega2[j*I + customer]);
+                }
+                else {
+                    if (customer > 0){
+                        obj.setLinearCoef(y[j], Dual.Omega2[j*I + customer]);
+                    } 
+                    else {
+                        double sum = 0;
+                        for (int i=1 ; i < inst->getI() ; i++) {
+                            sum += - Dual.Omega2[j*I + i] ;
+                        }
+                        obj.setLinearCoef(y[j], sum);
+                    }
+                }
+            }
+
+            else{
+                obj.setLinearCoef(x[j], inst->getd(customer) * Dual.Gamma[j]);
+                if (customer > 0){
+                    obj.setLinearCoef(y[j], - inst->getc(j) * Dual.Gamma[j] + Dual.Omega2[j*I + customer]);
+                } 
+                else {
+                    double sum = 0;
+                    for (int i=1 ; i < inst->getI() ; i++) {
+                        sum += - Dual.Omega2[j*I + i] ;
+                    }
+                    obj.setLinearCoef(y[j], - inst->getc(j) * Dual.Gamma[j] + sum);
+                }
+            }
+        }
     }
 
 }

@@ -121,7 +121,7 @@ public:
 ////////// DECOMPOSITION PAR PAS DE TEMPS //////////
 ////////////////////////////////////////////////////
 
-class ObjPricerCustomerRCFLP : public ObjPricerRCFLP {
+class ObjPricerCustomer : public ObjPricerRCFLP {
 public:
 
     MasterCustomer_Model* Master ;
@@ -129,7 +129,7 @@ public:
     vector<DynProgPricingAlgoCustomer*> AlgoDynProg;
 
    /** Constructs the pricer object with the data needed */
-   ObjPricerCustomerRCFLP(
+   ObjPricerCustomer(
       SCIP*                               scip,        /**< SCIP pointer */
       const char*                         p_name,       /**< name of pricer */
       MasterCustomer_Model*                       M,
@@ -138,7 +138,7 @@ public:
       );
 
    /** Destructs the pricer object. */
-   virtual ~ObjPricerCustomerRCFLP();
+   virtual ~ObjPricerCustomer();
 
    /** initialization method of variable pricer (called after problem was transformed) */
    virtual SCIP_DECL_PRICERINIT(scip_init);

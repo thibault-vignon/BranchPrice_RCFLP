@@ -11,6 +11,9 @@ DualCostsFacility::DualCostsFacility(InstanceRCFLP* inst) {
 
     Omega1.resize(I*J, 0) ;
     Omega2.resize(I*J, 0) ;
+
+    Mu.resize(I, 0) ;
+    Nu.resize(I*J, 0) ;
 }
 
 
@@ -73,13 +76,48 @@ void CplexPricingAlgoFacility::updateObjCoefficients(InstanceRCFLP* inst, const 
 
     int I = inst->getI() ;
 
-    for (int i=0 ; i<I ; i++) {
+    double sum = 0 ;
 
-            obj.setLinearCoef(x[i], BaseObjCoefX.at(i));
+    if (!Farkas){
 
+        if (Param.doubleDecompo){
+            for (int i=0 ; i<I ; i++) {
+                obj.setLinearCoef(x[i], BaseObjCoefX.at(i) - Dual.Omega1[facility*I + i] );
+                if (Param.compactCapacityConstraints){
+                    sum += - Dual.Omega2[facility*I + i];
+                }
+            }
+            obj.setLinearCoef(y[0], BaseObjCoefY.at(0) + sum) ;
+        }
+
+        else {
+            for (int i=0 ; i<I ; i++) {
+                obj.setLinearCoef(x[i], BaseObjCoefX.at(i) - Dual.Mu[i] + inst->getd(i) * inst->getK() * Dual.Nu[facility*I + i]);
+                sum += - inst->getc(facility) * Dual.Nu[facility*I + i] ;
+            }
+            obj.setLinearCoef(y[0], BaseObjCoefY.at(0) + sum) ;
+        }
     }
-    
-    obj.setLinearCoef(y[0], BaseObjCoefY.at(0)) ;
+    else {
+
+        if (Param.doubleDecompo){
+            for (int i=0 ; i<I ; i++) {
+                obj.setLinearCoef(x[i], - Dual.Omega1[facility*I + i]);
+                if (Param.compactCapacityConstraints){
+                    sum += - Dual.Omega2[facility*I + i];
+                }
+            }
+            obj.setLinearCoef(y[0], sum) ;  
+        }
+
+        else {
+            for (int i=0 ; i<I ; i++) {
+                obj.setLinearCoef(x[i], - Dual.Mu[i] + inst->getd(i) * inst->getK() * Dual.Nu[facility*I + i]);
+                sum += - inst->getc(facility) * Dual.Nu[facility*I + i] ;
+            }
+            obj.setLinearCoef(y[0], sum) ;
+        }
+    }
 }
 
 

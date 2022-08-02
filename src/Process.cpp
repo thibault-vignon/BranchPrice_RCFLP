@@ -142,16 +142,24 @@ Parameters init_parameters(InstanceRCFLP* inst, int met) {
     switch (arr[indice - 1]) {
         case 1:
             // Par facility
-            
+            FacilityDecompo = true ;
+            compactCapacityConstraints = true ;
             break ;
 
         case 2:
             // Par client
-
+            CustomerDecompo = true ;
+            compactCapacityConstraints = true ;
             break ;
 
         case 3:
-            // Double
+            // Double contraintes de capacité compactes
+            doubleDecompo = true ;
+            compactCapacityConstraints = true ;
+            break ;
+
+        case 4:
+            // Double contraintes de capacité alternatives
             doubleDecompo = true ;
             break ;
     }

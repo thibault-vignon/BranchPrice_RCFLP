@@ -17,7 +17,7 @@ using namespace scip;
  *
  *  An alternative is to have a problem data class which allows to access the data.
  */
-ObjPricerCustomerRCFLP::ObjPricerCustomerRCFLP(
+ObjPricerCustomer::ObjPricerCustomer(
         SCIP*                                scip,          /**< SCIP pointer */
         const char*                         pp_name,      /**< name of pricer */
         MasterCustomer_Model*                        M,
@@ -48,7 +48,7 @@ ObjPricerCustomerRCFLP::ObjPricerCustomerRCFLP(
 
 
 /** Destructs the pricer object. */
-ObjPricerCustomerRCFLP::~ObjPricerCustomerRCFLP()
+ObjPricerCustomer::~ObjPricerCustomer()
 {
     cout<<"Destructeur du pricer"<<endl;
 }
@@ -59,18 +59,22 @@ ObjPricerCustomerRCFLP::~ObjPricerCustomerRCFLP()
  *  the variables and constraints in the transformed problem from the references in the original
  *  problem.
  */
-SCIP_DECL_PRICERINIT(ObjPricerCustomerRCFLP::scip_init)
+SCIP_DECL_PRICERINIT(ObjPricerCustomer::scip_init)
 {
 
     cout<<"**************PRICER INIT************ "<<endl;
     int I = inst->getI() ;
+    int J = inst->getJ() ;
 
     //convexity constraint
-        for (int i=0 ; i < I ; i++) {
+    for (int i=0 ; i < I ; i++) {
         SCIPgetTransformedCons( scip, Master->convexity_cstr.at(i), &(Master->convexity_cstr.at(i)) );
     }
 
-    // TODO : autres contraintes
+    //capacity constraints
+    for (int j = 0 ; j < J ; j++){
+        SCIPgetTransformedCons( scip, Master->capacity_cstr.at(j), &(Master->capacity_cstr.at(j)) );
+    }
 
     cout<<"**************FIN PRICER INIT************ "<<endl;
 
@@ -99,10 +103,10 @@ SCIP_DECL_PRICERINIT(ObjPricerCustomerRCFLP::scip_init)
 //    return SCIP_OKAY;
 //}
 
-SCIP_RETCODE ObjPricerCustomerRCFLP::scip_redcost(SCIP* scip, SCIP_PRICER* pricer, SCIP_Real* lowerbound, SCIP_Bool* stopearly, SCIP_RESULT* result)
+SCIP_RETCODE ObjPricerCustomer::scip_redcost(SCIP* scip, SCIP_PRICER* pricer, SCIP_Real* lowerbound, SCIP_Bool* stopearly, SCIP_RESULT* result)
 {
 
-    SCIPdebugMsg(scip, "call scip_redcost ...\n");
+    cout << "call scip_redcost ..." << endl ;
 
     if( Param.PriceAndBranch && SCIPgetDepth(scip) != 0 )
     {
@@ -120,9 +124,9 @@ SCIP_RETCODE ObjPricerCustomerRCFLP::scip_redcost(SCIP* scip, SCIP_PRICER* price
 
 }
 
-SCIP_RETCODE ObjPricerCustomerRCFLP::scip_farkas( SCIP* scip, SCIP_PRICER* pricer, SCIP_RESULT* result ){
+SCIP_RETCODE ObjPricerCustomer::scip_farkas( SCIP* scip, SCIP_PRICER* pricer, SCIP_RESULT* result ){
 
-    SCIPdebugMsg(scip, "call scip_farkas ...\n");
+    cout << "call scip_farkas ..." << endl ;
 
     if( Param.PriceAndBranch && SCIPgetDepth(scip) != 0 )
     {
@@ -142,11 +146,12 @@ SCIP_RETCODE ObjPricerCustomerRCFLP::scip_farkas( SCIP* scip, SCIP_PRICER* price
 
 
 
-void ObjPricerCustomerRCFLP::updateDualCosts(SCIP* scip, DualCostsCustomer & dual_cost, bool Farkas) {
+void ObjPricerCustomer::updateDualCosts(SCIP* scip, DualCostsCustomer & dual_cost, bool Farkas) {
     ///// RECUPERATION DES COUTS DUAUX
 
-    int print = 0 ;
+    int print = 1 ;
     int I = inst->getI() ;
+    int J = inst->getJ() ;
 
     //cout << "solution duale :" << endl ;
 
@@ -162,17 +167,27 @@ void ObjPricerCustomerRCFLP::updateDualCosts(SCIP* scip, DualCostsCustomer & dua
             cout << "sigma(" << i <<") = " << dual_cost.Sigma[i] <<endl;
     }
 
-    // TODO : autres contraintes
+    //couts duaux "capacity constraint"
+    for (int j = 0 ; j < J ; j++){
+        if (!Farkas) {
+            dual_cost.Gamma.at(j) = SCIPgetDualsolLinear(scip, Master->capacity_cstr.at(j));
+        }
+        else{
+            dual_cost.Gamma.at(j) = SCIPgetDualfarkasLinear(scip, Master->capacity_cstr.at(j));
+        }
+        if (print)
+            cout << "gamma(" << j <<") = " << dual_cost.Gamma.at(j) <<endl;
+    }
 }
 
-void ObjPricerCustomerRCFLP::pricingRCFLP( SCIP*              scip  , bool Farkas             /**< SCIP data structure */)
+void ObjPricerCustomer::pricingRCFLP( SCIP*              scip  , bool Farkas             /**< SCIP data structure */)
 {
 #ifdef OUTPUT_PRICER
    //cout<<"**************PRICER************ " << endl ;
     // SCIPprintBestSol(scip, NULL, FALSE);
 #endif
 
-    int print = 0 ;
+    int print = 1 ;
 
     cout<<"**************PRICER************ " << endl ;
 
@@ -290,12 +305,12 @@ void ObjPricerCustomerRCFLP::pricingRCFLP( SCIP*              scip  , bool Farka
 
 }
 
-void ObjPricerCustomerRCFLP::addVarBound(SCIP_ConsData* consdata) {
+void ObjPricerCustomer::addVarBound(SCIP_ConsData* consdata) {
 
         //A implémenter
 }
 
-void ObjPricerCustomerRCFLP::removeVarBound(SCIP_ConsData* consdata) {
+void ObjPricerCustomer::removeVarBound(SCIP_ConsData* consdata) {
 
  
         //A implémenter

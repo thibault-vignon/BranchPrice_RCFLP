@@ -151,7 +151,7 @@ SCIP_DECL_PRICERINIT(ObjPricerDouble::scip_init)
 SCIP_RETCODE ObjPricerDouble::scip_redcost(SCIP* scip, SCIP_PRICER* pricer, SCIP_Real* lowerbound, SCIP_Bool* stopearly, SCIP_RESULT* result)
 {
 
-    SCIPdebugMsg(scip, "call scip_redcost ...\n");
+    cout << "call scip_redcost ..." << endl;
 
     if( Param.PriceAndBranch && SCIPgetDepth(scip) != 0 )
     {
@@ -174,7 +174,7 @@ SCIP_RETCODE ObjPricerDouble::scip_redcost(SCIP* scip, SCIP_PRICER* pricer, SCIP
 
 SCIP_RETCODE ObjPricerDouble::scip_farkas( SCIP* scip, SCIP_PRICER* pricer, SCIP_RESULT* result ){
 
-    SCIPdebugMsg(scip, "call scip_farkas ...\n");
+    cout << "call scip_farkas ..." << endl ;
 
     if( Param.PriceAndBranch && SCIPgetDepth(scip) != 0 )
     {
@@ -198,14 +198,14 @@ void ObjPricerDouble::updateDualCosts_facility(SCIP* scip, DualCostsFacility & d
     ///// RECUPERATION DES COUTS DUAUX
 
 
-    int print = 0 ;
+    int print = 1 ;
     int J = inst->getJ();
     int I = inst->getI();
 
     //cout << "solution duale :" << endl ;
     //couts duaux contrainte égalité en x
     for (int j = 0 ; j < J ; j++) {
-        for (int i=1 ; i < I ; i++) {
+        for (int i=0 ; i < I ; i++) {
             if (!Farkas) {
                 dual_cost.Omega1[j*I + i] = SCIPgetDualsolLinear(scip, Master->eq_customer_facility_x.at(j*I + i) );
             }
@@ -221,7 +221,7 @@ void ObjPricerDouble::updateDualCosts_facility(SCIP* scip, DualCostsFacility & d
     //cout << "solution duale :" << endl ;
     //couts duaux contrainte égalité en y
     for (int j = 0 ; j < J ; j++) {
-        for (int i=1 ; i < I ; i++) {
+        for (int i=0 ; i < I ; i++) {
             if (!Farkas) {
                 dual_cost.Omega2[j*I + i] = SCIPgetDualsolLinear(scip, Master->eq_customer_facility_y.at(j*I + i) );
             }
@@ -249,14 +249,14 @@ void ObjPricerDouble::updateDualCosts_facility(SCIP* scip, DualCostsFacility & d
 void ObjPricerDouble::updateDualCosts_customer(SCIP* scip, DualCostsCustomer & dual_cost, bool Farkas) {
     ///// RECUPERATION DES COUTS DUAUX
 
-    int print = 0 ;
+    int print = 1 ;
     int J = inst->getJ();
     int I = inst->getI();
 
     //cout << "solution duale :" << endl ;
     //couts duaux contrainte égalité en x
     for (int j = 0 ; j < J ; j++) {
-        for (int i=1 ; i < I ; i++) {
+        for (int i=0 ; i < I ; i++) {
             if (!Farkas) {
                 dual_cost.Omega1[j*I + i] = SCIPgetDualsolLinear(scip, Master->eq_customer_facility_x.at(j*I + i) );
             }
@@ -271,7 +271,7 @@ void ObjPricerDouble::updateDualCosts_customer(SCIP* scip, DualCostsCustomer & d
     //cout << "solution duale :" << endl ;
     //couts duaux contrainte égalité en y
     for (int j = 0 ; j < J ; j++) {
-        for (int i=1 ; i < I ; i++) {
+        for (int i=0 ; i < I ; i++) {
             if (!Farkas) {
                 dual_cost.Omega2[j*I + i] = SCIPgetDualsolLinear(scip, Master->eq_customer_facility_y.at(j*I + i) );
             }
@@ -286,7 +286,7 @@ void ObjPricerDouble::updateDualCosts_customer(SCIP* scip, DualCostsCustomer & d
 
 
     //couts duaux "customer convexity constraint"
-    for (int i=1 ; i < I ; i++) {
+    for (int i=0 ; i < I ; i++) {
         if (!Farkas) {
             dual_cost.Sigma.at(i) = SCIPgetDualsolLinear(scip, Master->conv_lambda_customer.at(i));
         }
@@ -333,7 +333,7 @@ void ObjPricerDouble::pricingRCFLP( SCIP*              scip  , bool Farkas      
     //    //cout << "solution réalisable:" << endl ;
     //    SCIPprintBestSol(scip, NULL, FALSE);
 
-    ofstream convergence("convergence/" + std::to_string(Master->J) + "_" + std::to_string(Master->I) + ".csv", std::ofstream::out | std::ofstream::app);
+    // ofstream convergence("convergence/" + std::to_string(Master->J) + "_" + std::to_string(Master->I) + ".csv", std::ofstream::out | std::ofstream::app);
 
     currentLowerBound = 0;
 
@@ -484,7 +484,7 @@ void ObjPricerDouble::pricingRCFLP( SCIP*              scip  , bool Farkas      
 
             /* add new variable to the list of variables to price into LP (score: leave 1 here) */
             SCIP_RETCODE ajout = SCIPaddPricedVar(scip, lambdaCustomer->ptr, 1.0);
-            cout << "ajout var par temps: " << ajout << endl;
+            cout << "ajout var par client: " << ajout << endl;
 
             ///// ADD COEFFICIENTS TO DEMAND, POWER LIMITS and CONVEXITY CONSTRAINTS
             Master->addCoefsToConstraints_customerVar(scip, lambdaCustomer) ;
@@ -501,7 +501,7 @@ void ObjPricerDouble::pricingRCFLP( SCIP*              scip  , bool Farkas      
 
     if (Param.nodeLimit == 1){
         Master->totalDualCostList.push_back(totalDualCost);
-        convergence << iteration << "," << fmax(currentLowerBound,0) << "," << SCIPgetSolOrigObj(scip,NULL) << endl;
+        // convergence << iteration << "," << fmax(currentLowerBound,0) << "," << SCIPgetSolOrigObj(scip,NULL) << endl;
     }
 
 #ifdef OUTPUT_PRICER

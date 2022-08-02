@@ -5,10 +5,10 @@ dossier=OR-Library
  
 printf $dossier " \n" >> result.txt
 
-printf " & J & I & v & K & id & Iter & Var & cols I & cols J & CPU & CPU(Master) & Gap & Dual b. & Primal b. & LR & LR(Cplex) \\\\\\ \n " >> result.txt
+printf " & J & I & v & K & id & Iter & Var & cols I & cols J & CPU & CPU(Master) & Gap & Dual b. & Primal b. & LR & LR(Cplex) & Opt(Cplex) \\\\\\ \n " >> result.txt
 for v in 15 ; do
   for id in "cap61" ; do
-    for met in 100 ; do
+    for met in 100 200 300 400 ; do
       rm logs/$met.txt
       #rm convergence/${n}_${T}_$id.csv
       ./bin/SCIP_RCFLP_BP.linux.x86_64.gnu.opt.cpx $v $dossier $id $met >> logs/$met.txt

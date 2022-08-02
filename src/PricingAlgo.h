@@ -21,6 +21,8 @@ public:
   vector<double> Omega1 ; // contraintes d'égalité customer/facility en x
   vector<double> Omega2 ; // contraintes d'égalité customer/facility en y
 
+  vector<double> Gamma ; // contraintes capacité
+
   DualCostsCustomer(InstanceRCFLP* inst) ;
 };
 
@@ -32,6 +34,9 @@ public:
     
   vector<double> Omega1 ; // contraintes d'égalités customer/facility en x
   vector<double> Omega2 ; // contraintes d'égalités customer/facility en y
+
+  vector<double> Mu ; // contraintes assignation
+  vector<double> Nu ; // contraintes fiabilité
 
   DualCostsFacility(InstanceRCFLP* inst) ;
 };
