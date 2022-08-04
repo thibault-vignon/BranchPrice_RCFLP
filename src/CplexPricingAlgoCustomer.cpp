@@ -105,7 +105,7 @@ void CplexPricingAlgoCustomer::updateObjCoefficients(InstanceRCFLP* inst, const 
             else {
                 obj.setLinearCoef(x[j], BaseObjCoefX.at(j) + inst->getd(customer) * Dual.Gamma[j]);
                 if (customer > 0){
-                    obj.setLinearCoef(y[j], BaseObjCoefY.at(j) - inst->getc(j) * Dual.Gamma[j] + Dual.Omega2[j*I + customer]);
+                    obj.setLinearCoef(y[j], BaseObjCoefY.at(j) + inst->getc(j) * Dual.Gamma[j] + Dual.Omega2[j*I + customer]);
                 } 
                 else {
                     double sum = 0;
@@ -142,7 +142,7 @@ void CplexPricingAlgoCustomer::updateObjCoefficients(InstanceRCFLP* inst, const 
             else{
                 obj.setLinearCoef(x[j], inst->getd(customer) * Dual.Gamma[j]);
                 if (customer > 0){
-                    obj.setLinearCoef(y[j], - inst->getc(j) * Dual.Gamma[j] + Dual.Omega2[j*I + customer]);
+                    obj.setLinearCoef(y[j], + inst->getc(j) * Dual.Gamma[j] + Dual.Omega2[j*I + customer]);
                 } 
                 else {
                     double sum = 0;
@@ -163,6 +163,8 @@ bool CplexPricingAlgoCustomer::findImprovingSolution(InstanceRCFLP* inst, const 
 
     ofstream LogFile("LogFile.txt");
     cplex.setOut(LogFile);
+
+    cplex.exportModel( (to_string(customer) + "_" + "bug.lp" ).c_str());
 
     if ( !cplex.solve() ) {
         env.error() << "Failed to optimize Pricer with Cplex" << endl;

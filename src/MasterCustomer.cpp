@@ -60,6 +60,25 @@ void MasterCustomer_Model::addCoefsToConstraints(SCIP* scip, MasterCustomer_Vari
             SCIPaddCoefLinear(scip, capacity_cstr.at(j), lambda->ptr, inst->getc(j)) ;
         }
     }
+
+    // add coefficient to the equality constraints between y variables
+    if (c > 0){
+        for (int j = 0 ; j < J ; j++) {
+            if (lambda->y_plan[j] > 1 - Param.Epsilon){
+                SCIPaddCoefLinear(scip, equality_cstr.at(j*(I-1) + c-1), lambda->ptr, -1.0) ;
+            }
+        }
+    }
+    else{
+        // On utilise la copie du client 0 comme rhs
+        for (int i = 0 ; i < I-1 ; i++) {
+            for (int j = 0 ; j < J ; j++) {
+                if (lambda->y_plan[j] > 1 - Param.Epsilon){
+                    SCIPaddCoefLinear(scip, equality_cstr.at(j*(I-1) + i), lambda->ptr, 1.0) ;
+                }
+            }
+        }
+    }
 }
 
 
@@ -132,6 +151,7 @@ void MasterCustomer_Model::createColumns(SCIP* scip, IloNumArray x, IloNumArray 
 MasterCustomer_Model::MasterCustomer_Model(InstanceRCFLP* instance, const Parameters & Parametres) : Master_Model(Parametres, instance) {
     convexity_cstr.resize(I, (SCIP_CONS*) NULL) ;
     capacity_cstr.resize(J, (SCIP_CONS*) NULL) ;
+    equality_cstr.resize((I-1)*J, (SCIP_CONS*) NULL) ;
 }
 
 void  MasterCustomer_Model::initScipMasterCustomerModel(SCIP* scip) {
@@ -141,7 +161,7 @@ void  MasterCustomer_Model::initScipMasterCustomerModel(SCIP* scip) {
     ////////////////////////////////////////////////////////////////
     // Constraints form: lhs <= ax <= rhs
 
-
+    cout << "convex cons..." << endl;
 
     ///// Convexity constraint ////
     char con_name_convex[255];
@@ -166,6 +186,8 @@ void  MasterCustomer_Model::initScipMasterCustomerModel(SCIP* scip) {
         convexity_cstr.at(i) = con;
     }
 
+    cout << "capacity cons..." << endl;
+
     ///// Capacity constraint ////
     char con_name_capacity[255];
     for (int j = 0 ; j<J ; j++)
@@ -188,6 +210,35 @@ void  MasterCustomer_Model::initScipMasterCustomerModel(SCIP* scip) {
         SCIPaddCons(scip, con);
         capacity_cstr.at(j) = con;
     }
+
+    cout << "equality cons..." << endl;
+
+    //Equality between clients on y variables
+    char con_name_equality[255];
+    for (int i = 0 ; i < I-1 ; i++)
+    {
+        for (int j = 0 ; j<J ; j++){
+            SCIP_CONS* con = NULL;
+            (void) SCIPsnprintf(con_name_equality, 255, "Equality(%d,%d)", j, i); // nom de la contrainte
+            SCIPcreateConsLinear( scip, &con, con_name_equality, 0, NULL, NULL,
+                                0.0,   // lhs
+                                0.0,   // rhs 
+                                true,  /* initial */
+                                false, /* separate */
+                                true,  /* enforce */
+                                true,  /* check */
+                                true,  /* propagate */
+                                false, /* local */
+                                true,  /* modifiable */
+                                false, /* dynamic */
+                                false, /* removable */
+                                false  /* stickingatnode */ );
+            SCIPaddCons(scip, con);
+            equality_cstr.at(j*(I-1) + i) = con;
+        }
+    }
+
+    cout << "constraints initialized" << endl;
 
     ///////////////////////////////////////////////////////////////
     //////////   MASTER LAMBDA VARIABLES INITIALIZATION   /////////

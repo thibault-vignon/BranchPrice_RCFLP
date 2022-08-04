@@ -76,6 +76,13 @@ SCIP_DECL_PRICERINIT(ObjPricerCustomer::scip_init)
         SCIPgetTransformedCons( scip, Master->capacity_cstr.at(j), &(Master->capacity_cstr.at(j)) );
     }
 
+    //equality constraints
+    for (int j = 0 ; j < J ; j++){
+        for (int i=0 ; i < I-1 ; i++) {
+            SCIPgetTransformedCons( scip, Master->equality_cstr.at(j*(I-1) + i), &(Master->equality_cstr.at(j*(I-1) + i)) );
+        }
+    }
+
     cout<<"**************FIN PRICER INIT************ "<<endl;
 
     return SCIP_OKAY;
@@ -178,6 +185,20 @@ void ObjPricerCustomer::updateDualCosts(SCIP* scip, DualCostsCustomer & dual_cos
         if (print)
             cout << "gamma(" << j <<") = " << dual_cost.Gamma.at(j) <<endl;
     }
+
+    //couts duaux "equality constraint"
+    for (int j = 0 ; j < J ; j++){
+        for (int i = 0 ; i < I-1 ; i++) {
+            if (!Farkas) {
+                dual_cost.Omega2.at(j*I + i+1) = SCIPgetDualsolLinear(scip, Master->equality_cstr.at(j*(I-1) + i));
+            }
+            else{
+                dual_cost.Omega2.at(j*I + i+1) = SCIPgetDualfarkasLinear(scip, Master->equality_cstr.at(j*(I-1) + i));
+            }
+            if (print)
+                cout << "omega2(" << j << "," << i+1 << ") = " << dual_cost.Omega2.at(j*I + i+1) <<endl;
+        }
+    }
 }
 
 void ObjPricerCustomer::pricingRCFLP( SCIP*              scip  , bool Farkas             /**< SCIP data structure */)
@@ -194,17 +215,14 @@ void ObjPricerCustomer::pricingRCFLP( SCIP*              scip  , bool Farkas    
     
     iteration++;
 
-  // SCIPwriteTransProblem(scip, NULL, NULL, FALSE);
-    //SCIPprintSol(scip, NULL, NULL, FALSE);
-
 //        /// PMR courant et sa solution
 //        SCIPwriteTransProblem(scip, NULL, NULL, FALSE);
 
-//        // cout << "solution du PMR:" << endl ;
-//        SCIPprintSol(scip, NULL, NULL, FALSE);
+     cout << "solution du PMR:" << endl ;
+    SCIPprintSol(scip, NULL, NULL, FALSE);
 
-//        //cout << "solution réalisable:" << endl ;
-//        SCIPprintBestSol(scip, NULL, FALSE);
+    cout << "solution réalisable:" << endl ;
+    SCIPprintBestSol(scip, NULL, FALSE);
 
     int I = inst->getI() ;
     int J = inst->getJ() ;
@@ -223,7 +241,7 @@ void ObjPricerCustomer::pricingRCFLP( SCIP*              scip  , bool Farkas    
 
     // Recherche par client
 
-    for (int i=1 ; i < I ; i++) {
+    for (int i=0 ; i < I ; i++) {
 
         if (print) cout << "client "<< i << endl;
 

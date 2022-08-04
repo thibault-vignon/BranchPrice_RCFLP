@@ -170,6 +170,7 @@ public:
     // Keep a pointer on every constraint of the MasterCustomer program 
     vector<SCIP_CONS*> convexity_cstr;
     vector<SCIP_CONS*> capacity_cstr;
+    vector<SCIP_CONS*> equality_cstr;
 
     // Keep informations on every variables of the Master program
     //NB: le fait d'utiliser une liste ne permet pas de supprimer des variables

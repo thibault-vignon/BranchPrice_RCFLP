@@ -141,7 +141,7 @@ void  MasterDouble_Model::initScipMasterDoubleModel(SCIP* scip) {
     ////////////////////////////////////////////////////////////////
     // Constraints form: lhs <= ax <= rhs
 
-    ///// Equality time/site on x variables constraint /////
+    ///// Equality facility/client on x variables constraint /////
     char con_name_eq_customer_facility_x[255];
     SCIP_Real upper_bound =  0 ;
 
@@ -169,7 +169,7 @@ void  MasterDouble_Model::initScipMasterDoubleModel(SCIP* scip) {
         }
     }
 
-    ///// Equality time/site on x variables constraint /////
+    ///// Equality facility/client on y variables constraint /////
     char con_name_eq_customer_facility_y[255];
 
     for (int i = 0 ; i < I ; i++)

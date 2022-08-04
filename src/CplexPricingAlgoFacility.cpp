@@ -112,8 +112,8 @@ void CplexPricingAlgoFacility::updateObjCoefficients(InstanceRCFLP* inst, const 
 
         else {
             for (int i=0 ; i<I ; i++) {
-                obj.setLinearCoef(x[i], - Dual.Mu[i] + inst->getd(i) * inst->getK() * Dual.Nu[facility*I + i]);
-                sum += - inst->getc(facility) * Dual.Nu[facility*I + i] ;
+                obj.setLinearCoef(x[i], - Dual.Mu[i] - inst->getd(i) * inst->getK() * Dual.Nu[facility*I + i]);
+                sum += inst->getc(facility) * Dual.Nu[facility*I + i] ;
             }
             obj.setLinearCoef(y[0], sum) ;
         }
