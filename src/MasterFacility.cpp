@@ -97,6 +97,17 @@ void MasterFacility_Model::initMasterFacilityVariable(SCIP* scip, MasterFacility
 
     //// Add new variable to the list
     L_var.push_back(var);
+
+    cout << "Variable " << var_name << " added, with x plan: "  ;
+
+    for (int i=0 ; i < inst->getI() ; i++) {
+        cout << var->x_plan[i] << " "  ;
+    }
+    cout << endl ;
+
+    cout << "and y plan: " << var->y_plan[0] ;
+
+    cout << endl ;
 }
 
 MasterFacility_Model::MasterFacility_Model(InstanceRCFLP* inst, const Parameters & Parametres) : Master_Model(Parametres, inst) {

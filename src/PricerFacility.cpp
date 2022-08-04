@@ -152,7 +152,7 @@ SCIP_RETCODE ObjPricerFacility::scip_farkas( SCIP* scip, SCIP_PRICER* pricer, SC
 void ObjPricerFacility::updateDualCosts(SCIP* scip, DualCostsFacility & dual_cost, bool Farkas) {
     ///// RECUPERATION DES COUTS DUAUX
 
-    int print = 1 ;
+    int print = 0 ;
     int I = inst->getI() ;
     int J = inst->getJ() ;
 

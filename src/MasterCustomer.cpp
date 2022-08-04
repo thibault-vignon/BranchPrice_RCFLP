@@ -90,6 +90,20 @@ void MasterCustomer_Model::initMasterCustomerVariable(SCIP* scip, MasterCustomer
 
     //// Add new variable to the list
     L_var.push_back(var);
+
+    cout << "Variable " << var_name << " added, with x plan: "  ;
+
+    for (int j=0 ; j < inst->getJ() ; j++) {
+        cout << var->x_plan[j] << " "  ;
+    }
+    cout << endl ;
+
+    cout << "and y plan: " ;
+
+    for (int j=0 ; j < inst->getJ() ; j++) {
+        cout << var->y_plan[j] << " "  ;
+    }
+    cout << endl ;
 }
 
 //////// Créé des variables lambda à partir d'une solution (x,p) ///////////
