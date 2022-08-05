@@ -214,7 +214,7 @@ void ObjPricerDouble::updateDualCosts_facility(SCIP* scip, DualCostsFacility & d
             }
 
             if (print)
-                cout << "omega(" << j <<"," << i <<") = " << dual_cost.Omega1[j*I + i] <<endl;
+                cout << "omega1(" << j <<"," << i <<") = " << dual_cost.Omega1[j*I + i] <<endl;
         }
     }
 
@@ -230,7 +230,7 @@ void ObjPricerDouble::updateDualCosts_facility(SCIP* scip, DualCostsFacility & d
             }
 
             if (print)
-                cout << "omega(" << j <<"," << i <<") = " << dual_cost.Omega2[j*I + i] <<endl;
+                cout << "omega2(" << j <<"," << i <<") = " << dual_cost.Omega2[j*I + i] <<endl;
         }
     }
 
@@ -311,7 +311,7 @@ void ObjPricerDouble::pricingRCFLP( SCIP*              scip  , bool Farkas      
     // if (Master->nbIter == 1) {
     //     cout << "RMP value : " << endl;
     //     //SCIPprintSol(scip, NULL, NULL, FALSE);
-    //     SCIPwriteLP(scip, "debug.lp");
+    SCIPwriteLP(scip, "debug.lp");
     // }
 
     totalDualCost = 0;
@@ -322,10 +322,6 @@ void ObjPricerDouble::pricingRCFLP( SCIP*              scip  , bool Farkas      
 
     facilityVarsToAdd.clear() ;
     customerVarsToAdd.clear() ;
-
-    //int iteration_limit=5 ;
-    //    /// PMR courant et sa solution
-    // SCIPwriteTransProblem(scip, NULL, NULL, FALSE);
 
     //   // cout << "solution du PMR:" << endl ;
     //    SCIPprintSol(scip, NULL, NULL, FALSE);
@@ -403,7 +399,7 @@ void ObjPricerDouble::pricingRCFLP( SCIP*              scip  , bool Farkas      
 
     // Recherche par client
 
-    for (int i=1 ; i < I ; i++) {
+    for (int i=0 ; i < I ; i++) {
 
         if (print) cout << "client "<< i << endl;
 
@@ -471,6 +467,13 @@ void ObjPricerDouble::pricingRCFLP( SCIP*              scip  , bool Farkas      
             facilityColumns++;
 
             facilityVarsToAdd.pop_front() ;
+
+            redcost = SCIPgetVarRedcost(scip, lambdaFacility->ptr) ;
+
+            if (redcost >= 0){
+                cout << "BUG : " << endl ;
+                cout << "redcost : " << redcost << endl;
+            }
         }
 
         MasterCustomer_Variable* lambdaCustomer ;
@@ -492,6 +495,13 @@ void ObjPricerDouble::pricingRCFLP( SCIP*              scip  , bool Farkas      
             customerColumns++;
 
             customerVarsToAdd.pop_front() ;
+
+            redcost = SCIPgetVarRedcost(scip, lambdaCustomer->ptr) ;
+
+            if (redcost >= 0){
+                cout << "BUG : " << endl ;
+                cout << "redcost : " << redcost << endl;
+            }
         }
     }
 
@@ -505,7 +515,7 @@ void ObjPricerDouble::pricingRCFLP( SCIP*              scip  , bool Farkas      
     }
 
 #ifdef OUTPUT_PRICER
-    SCIPwriteTransProblem(scip, "RCFLP.lp", "lp", FALSE);
+    //SCIPwriteTransProblem(scip, "RCFLP.lp", "lp", FALSE);
     cout<<"************END PRICER******************"<<endl;
 #endif
 

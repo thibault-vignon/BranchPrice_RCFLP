@@ -255,13 +255,60 @@ void CplexChecker::checkSolution(const vector<double> & y_frac, const vector<dou
 
     IloModel CheckModel(env) ;
 
+    int I = inst->getI();
+    int J = inst->getJ() ;
 
     // Objective Function: Minimize Cost
-
-
+    for (int j=0 ; j < J ; j++) {
+        cost += inst->getb(j) * y_frac[j];
+        for (int i=0; i<I; i++) {
+            cost += inst->geta(j,i) * x_frac[j*I + i];
+        }
+    }
     CheckModel.add(IloMinimize(env, cost));
 
-    
+
+    // Assignment of each customer to a facility
+    for (int i=0; i<I; i++) {
+        double sum = 0 ;
+        for (int j=0 ; j < J ; j++) {
+            sum += x_frac[j*I + i];
+        }
+        if ((sum < 1 - eps) || (sum > 1 + eps)){
+            cout << "assignment " << i << " non satisfaite" << endl ;
+            cout << "somme des x : " << sum << endl;
+        }
+    }
+
+    // Capacity constraints
+    for (int j=0 ; j < J ; j++) {
+        double sum = 0 ;
+        for (int i=0; i<I; i++) {
+            sum += x_frac[j*I + i] * inst->getd(i);
+        }
+        if(sum > y_frac[j] * inst->getc(j) + eps) {
+            cout << "capacité " << j << " non satisfaite" << endl ;
+            cout << "somme des demandes : " << sum << endl;
+            cout << "capa : " << y_frac[j] * inst->getc(j) << endl;
+        }
+    }
+
+    // Reliability constraints
+    for (int i=0; i<I; i++) {
+        for (int j=0 ; j < J ; j++) {
+            double sum = 0 ;
+            for (int indice=0; indice<inst->getv(); indice++){
+                sum += y_frac[inst->getV(j)[indice]] * inst->getc(inst->getV(j)[indice]);
+            }
+            if(sum < x_frac[j*I + i] * inst->getd(i) * inst->getK() - eps) {
+                cout << "fiabilité " << i << "," << j << " non satisfaite" << endl ;
+                cout << "somme des capacités ouvertes : " << sum << endl;
+                cout << "demande ouverte : " << x_frac[j*I + i] * inst->getd(i) * inst->getK() << endl;
+            }
+        }
+    }
+
+
 
     IloCplex CheckCplex = IloCplex(CheckModel) ;
 

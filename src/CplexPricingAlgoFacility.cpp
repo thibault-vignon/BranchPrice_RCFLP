@@ -92,8 +92,16 @@ void CplexPricingAlgoFacility::updateObjCoefficients(InstanceRCFLP* inst, const 
 
         else {
             for (int i=0 ; i<I ; i++) {
-                obj.setLinearCoef(x[i], BaseObjCoefX.at(i) - Dual.Mu[i] - inst->getd(i) * inst->getK() * Dual.Nu[facility*I + i]);
-                sum += inst->getc(facility) * Dual.Nu[facility*I + i] ;
+                obj.setLinearCoef(x[i], BaseObjCoefX.at(i) - Dual.Mu[i] + inst->getd(i) * inst->getK() * Dual.Nu[facility*I + i]);
+            }
+            for (int i=0 ; i<I ; i++) {
+                for (int j = 0 ; j < inst->getJ() ; j++){
+                    for (int indice=0; indice<inst->getv(); indice++){
+                        if (inst->getV(j)[indice] == facility) {
+                            sum += - inst->getc(facility) * Dual.Nu[j*I + i] ;
+                        }
+                    }
+                }
             }
             obj.setLinearCoef(y[0], BaseObjCoefY.at(0) + sum) ;
         }
@@ -112,8 +120,16 @@ void CplexPricingAlgoFacility::updateObjCoefficients(InstanceRCFLP* inst, const 
 
         else {
             for (int i=0 ; i<I ; i++) {
-                obj.setLinearCoef(x[i], - Dual.Mu[i] - inst->getd(i) * inst->getK() * Dual.Nu[facility*I + i]);
-                sum += inst->getc(facility) * Dual.Nu[facility*I + i] ;
+                obj.setLinearCoef(x[i], - Dual.Mu[i] + inst->getd(i) * inst->getK() * Dual.Nu[facility*I + i]);
+            }
+            for (int i=0 ; i<I ; i++) {
+                for (int j = 0 ; j < inst->getJ() ; j++){
+                    for (int indice=0; indice<inst->getv(); indice++){
+                        if (inst->getV(j)[indice] == facility) {
+                            sum += - inst->getc(facility) * Dual.Nu[j*I + i] ;
+                        }
+                    }
+                }
             }
             obj.setLinearCoef(y[0], sum) ;
         }

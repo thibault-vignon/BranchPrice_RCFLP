@@ -5,9 +5,9 @@ dossier=OR-Library
  
 printf $dossier " \n" >> result.txt
 
-printf " & J & I & v & K & id & Iter & Var & cols I & cols J & CPU & CPU(Master) & Gap & Dual b. & Primal b. & LR & LR(Cplex) & Opt(Cplex) \\\\\\ \n " >> result.txt
-for v in 15 ; do
-  for id in "cap61" ; do
+printf " & J & I & v & K & id & Iter & Var & cols I & cols J & CPU & CPU(Master) & Gap & Dual b. & Primal b. & LR & LR(Cplex) & Opt(Cplex) & CPU(OptCplex) \\\\\\ \n " >> result.txt
+for v in 1 ; do
+  for id in "test" ; do
     for met in 200 ; do
       rm logs/$met.txt
       #rm convergence/${n}_${T}_$id.csv
@@ -18,4 +18,3 @@ for v in 15 ; do
   done
   printf "\\hline \n" >> result.txt	
 done
-printf "\\hline \n" >> result.txt	

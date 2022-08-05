@@ -203,9 +203,6 @@ void ObjPricerFacility::pricingRCFLP( SCIP*              scip  , bool Farkas    
     int print = 1 ;
     iteration++;
 
-//    /// PMR courant et sa solution
-   // SCIPwriteTransProblem(scip, NULL, NULL, FALSE);
-
 //   // cout << "solution du PMR:" << endl ;
 //    SCIPprintSol(scip, NULL, NULL, FALSE);
 
@@ -302,13 +299,22 @@ void ObjPricerFacility::pricingRCFLP( SCIP*              scip  , bool Farkas    
             facilityColumns++;
 
             facilityVarsToAdd.pop_front() ;
+
+            redcost = SCIPgetVarRedcost(scip, lambdaFacility->ptr) ;
+
+            if (redcost >= 0){
+                cout << "BUG : " << endl ;
+                cout << "redcost : " << redcost << endl;
+
+                (AlgoCplex[lambdaFacility->facility])->cplex.exportModel( (to_string(lambdaFacility->facility) + "_" + "bug.lp" ).c_str());
+            }
         }
     }
 
     infeasibilityDetected = false ;
 
 #ifdef OUTPUT_PRICER
-    SCIPwriteTransProblem(scip, "RCFLP.lp", "lp", FALSE);
+    //SCIPwriteTransProblem(scip, "RCFLP.lp", "lp", FALSE);
     cout<<"************END PRICER******************"<<endl;
 #endif
 

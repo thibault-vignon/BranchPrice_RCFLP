@@ -147,7 +147,6 @@ int main(int argc, char** argv)
 
     // frontal resolution with Cplex to verify results
     CplexChecker checker = CplexChecker(inst, Param) ;
-    cout << checker.getIntegerObjValue() << endl;
 
     // create master and pricing classes
     Master_Model* Master_ptr;
@@ -221,7 +220,46 @@ int main(int argc, char** argv)
 
         cout << "resolution..." << endl ;
         SCIPsolve(scip);
+
+        fichier << met << " & " << inst->getJ() << " & " << inst->getI() << " & " << inst->getv()  << " & " << inst->getK() << " & " << " - ";
+
+        fichier << " & " << Pricer->iteration ;
+        fichier << " & " << SCIPgetNPricevarsFound(scip) ;
+        fichier << " & " << Pricer->customerColumns ; 
+        fichier << " & " << Pricer->facilityColumns ;
+
+        double timeScip =  SCIPgetSolvingTime(scip) ;
+        fichier << " &  " << timeScip;
+        SCIP_PRICER ** scippricer = SCIPgetPricers(scip);
+        fichier << " & " <<  timeScip - SCIPpricerGetTime(scippricer[0]);
+
+        fichier << " &  " << SCIPgetGap(scip);
+        fichier << " &  " << SCIPgetDualbound(scip) ;
+        fichier << " &  " << SCIPgetPrimalbound(scip) ;
+        fichier << " & " << checker.getLRValue() ; 
+        fichier << " & " << checker.getLRCplex() ;
+        fichier << " & " << checker.getIntegerObjValue() ;
+        fichier << " & " << checker.cpuTime ;
     }
+
+
+    else {
+
+    }
+
+    fichier <<" \\\\ " << endl ;
+
+    Master_ptr->computeFracSol(scip);
+    for (int j=0 ; j < inst->getJ() ; j++) {
+        cout << "j=" << j << " : " ;
+        for (int i=0 ; i < inst->getI() ; i++) {
+            cout << Master_ptr->x_frac[j*inst->getI() + i] ;
+            cout << "  " ;
+        }
+        cout << endl;
+        cout << "y : " << Master_ptr->y_frac[j] << endl;
+    }
+    checker.checkSolution(Master_ptr->y_frac, Master_ptr->x_frac);
 
 }
 

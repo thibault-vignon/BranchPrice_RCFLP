@@ -156,7 +156,7 @@ SCIP_RETCODE ObjPricerCustomer::scip_farkas( SCIP* scip, SCIP_PRICER* pricer, SC
 void ObjPricerCustomer::updateDualCosts(SCIP* scip, DualCostsCustomer & dual_cost, bool Farkas) {
     ///// RECUPERATION DES COUTS DUAUX
 
-    int print = 1 ;
+    int print = 0 ;
     int I = inst->getI() ;
     int J = inst->getJ() ;
 
@@ -215,14 +215,13 @@ void ObjPricerCustomer::pricingRCFLP( SCIP*              scip  , bool Farkas    
     
     iteration++;
 
-//        /// PMR courant et sa solution
-//        SCIPwriteTransProblem(scip, NULL, NULL, FALSE);
-
-     cout << "solution du PMR:" << endl ;
+    cout << "solution du PMR:" << endl ;
     SCIPprintSol(scip, NULL, NULL, FALSE);
 
     cout << "solution réalisable:" << endl ;
     SCIPprintBestSol(scip, NULL, FALSE);
+
+    SCIPwriteLP(scip, "debug.lp");
 
     int I = inst->getI() ;
     int J = inst->getJ() ;
@@ -310,15 +309,21 @@ void ObjPricerCustomer::pricingRCFLP( SCIP*              scip  , bool Farkas    
             customerColumns++;
 
             customerVarsToAdd.pop_front() ;
+
+            redcost = SCIPgetVarRedcost(scip, lambdaCustomer->ptr) ;
+
+            if (redcost >= 0){
+                cout << "BUG : " << endl ;
+                cout << "redcost : " << redcost << endl;
+            }
         }
     }
 
     infeasibilityDetected = false ;
 
-  //  cout<<"************END PRICER******************"<<endl;
 #ifdef OUTPUT_PRICER
-    SCIPwriteTransProblem(scip, "RCFLP.lp", "lp", FALSE);
-  //  cout<<"************END PRICER******************"<<endl;
+    //SCIPwriteTransProblem(scip, "RCFLP.lp", "lp", FALSE);
+    cout<<"************END PRICER******************"<<endl;
 #endif
 
 }
