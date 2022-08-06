@@ -16,12 +16,13 @@ void MasterFacility_Variable::computeCost(InstanceRCFLP* inst, const Parameters 
     //compute cost of up/down plan lambda: fixed cost (including minimum power output cost) and start up cost
     cost=0 ;
 
-    // TODO : repartition
-
     if (Param.doubleDecompo){
         for (int i=0 ; i < inst->getI() ; i++) {
             if (x_plan[i] > 1 - Param.Epsilon){
-                cost += inst->geta(facility,i);
+                cost += 0.5 * (2 - Param.balanceCostsX) * inst->geta(facility,i);
+            }
+            if (y_plan[0] > 1 - Param.Epsilon){
+                cost += 0.5 * Param.balanceCostsY * inst->getb(facility);
             }
         }
     }

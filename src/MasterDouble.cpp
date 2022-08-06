@@ -269,7 +269,8 @@ void  MasterDouble_Model::initScipMasterDoubleModel(SCIP* scip) {
 }
 
 void MasterDouble_Model::computeFracSol(SCIP* scip) {
-    list<MasterFacility_Variable*>::const_iterator itv;
+    list<MasterFacility_Variable*>::const_iterator itv_f;
+    list<MasterCustomer_Variable*>::const_iterator itv_c;
     SCIP_Real frac_value;
     for (int ind=0 ; ind < I*J ; ind++) {
         x_frac[ind]=0;
@@ -278,19 +279,28 @@ void MasterDouble_Model::computeFracSol(SCIP* scip) {
         y_frac[ind]=0;
     }
 
-    for (itv = L_var_facility.begin(); itv!=L_var_facility.end(); itv++) {
+    for (itv_f = L_var_facility.begin(); itv_f!=L_var_facility.end(); itv_f++) {
 
-        frac_value = fabs(SCIPgetVarSol(scip,(*itv)->ptr));
+        frac_value = fabs(SCIPgetVarSol(scip,(*itv_f)->ptr));
 
-        int f = (*itv)->facility ;
-        
-        if ((*itv)->y_plan[0] > 1 - Param.Epsilon) {
-            y_frac[f] += frac_value ;
-        }
+        int f = (*itv_f)->facility ;
 
         for (int i=0 ; i < I ; i++) {
-            if ((*itv)->x_plan[i] > 1 - Param.Epsilon) {
+            if ((*itv_f)->x_plan[i] > 1 - Param.Epsilon) {
                 x_frac[f*I + i] += frac_value ;
+            }
+        }
+    }
+
+    for (itv_c = L_var_customer.begin(); itv_c!=L_var_customer.end(); itv_c++) {
+
+        frac_value = fabs(SCIPgetVarSol(scip,(*itv_c)->ptr));
+
+        int c = (*itv_c)->customer ;
+
+        for (int j=0 ; j < J ; j++) {
+            if ((*itv_c)->y_plan[j] > 1 - Param.Epsilon) {
+                y_frac[j] += frac_value / I ;
             }
         }
     }

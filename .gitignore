@@ -4,4 +4,5 @@ obj/
 logs/
 convergence/
 *.csv
+*.lp
 LogFile.txt

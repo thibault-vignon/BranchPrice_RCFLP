@@ -198,7 +198,7 @@ void ObjPricerDouble::updateDualCosts_facility(SCIP* scip, DualCostsFacility & d
     ///// RECUPERATION DES COUTS DUAUX
 
 
-    int print = 1 ;
+    int print = 0 ;
     int J = inst->getJ();
     int I = inst->getI();
 
@@ -249,7 +249,7 @@ void ObjPricerDouble::updateDualCosts_facility(SCIP* scip, DualCostsFacility & d
 void ObjPricerDouble::updateDualCosts_customer(SCIP* scip, DualCostsCustomer & dual_cost, bool Farkas) {
     ///// RECUPERATION DES COUTS DUAUX
 
-    int print = 1 ;
+    int print = 0 ;
     int J = inst->getJ();
     int I = inst->getI();
 

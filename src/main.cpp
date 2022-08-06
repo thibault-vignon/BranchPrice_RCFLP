@@ -40,16 +40,18 @@ int main(int argc, char** argv)
 
 
     int v ;
+    double K;
     string instanceSet;
     string id;
     int met = 0 ;
 
     v = atoi(argv[1]);
-    instanceSet = argv[2];
-    id = argv[3];
-    met = atoi(argv[4]);
+    K = atoi(argv[2]);
+    instanceSet = argv[3];
+    id = argv[4];
+    met = atoi(argv[5]);
 
-    InstanceProcessed Instance = InstanceProcessed(v, instanceSet, id) ;
+    InstanceProcessed Instance = InstanceProcessed(v, K, instanceSet, id) ;
 
     string nom = Instance.fileName() ;
     cout << nom << endl;
@@ -153,6 +155,12 @@ int main(int argc, char** argv)
     ObjPricerRCFLP* Pricer = NULL ;
 
     static const char* PRICER_NAME = "Pricer_RCFLP";
+
+    cout << "valeurs: " << endl;
+    cout << 0.5 * (2 - Param.balanceCostsX) << endl;
+    cout << 0.5 * (2 - Param.balanceCostsY) << endl;
+    cout << 0.5 * Param.balanceCostsX << endl;
+    cout << 0.5 * Param.balanceCostsY << endl;
 
 
     if (Param.doubleDecompo){

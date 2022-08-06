@@ -33,7 +33,8 @@ public:
     bool DynProgFacility ;
     bool DynProgCustomer ;
 
-    bool balanceCosts;
+    bool balanceCostsX;
+    bool balanceCostsY;
     vector<double> costBalancingMaster;
     vector<double> costBalancingPricer;
 
@@ -52,7 +53,7 @@ public:
             bool compactCapacityConstraints,
             bool heuristicInit, bool Farkas,
             bool DynProgFacility, bool DynProgCustomer,
-            bool balanceCosts, 
+            bool balanceCostsX, bool balanceCostsY, 
             bool FacilityDecompo, bool CustomerDecompo, bool doubleDecompo, 
             bool heurPricing, double heurPricingThreshold,
             bool useLowerBound) ;
@@ -64,12 +65,14 @@ public :
 
     //donnees
     int v ;
+    double K;
     string instanceSet ;
     string id ;
 
-    InstanceProcessed(int v_, string instanceSet_, string id_)
+    InstanceProcessed(int v_, double K_, string instanceSet_, string id_)
     {
         v = v_ ;
+        K = K_;
         instanceSet = instanceSet_ ;
         id = id_ ;
     }

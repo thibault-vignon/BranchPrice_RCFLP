@@ -43,7 +43,7 @@ string to_string2(int number){
 }
 
 string InstanceProcessed::fileName() {
-        return("Instances/Reliable/" + to_string2(v) + "_" + instanceSet + "_" + id + ".txt") ;
+        return("Instances/Reliable/" + to_string2(v) + "_" + to_string2(K) + "_" + instanceSet + "_" + id + ".txt") ;
 }
 
 void InstanceProcessed::test(){
@@ -55,7 +55,7 @@ Parameters::Parameters(bool ColumnGeneration, int nodeLimit, bool PriceAndBranch
             bool compactCapacityConstraints,
             bool heuristicInit, bool Farkas,
             bool DynProgFacility, bool DynProgCustomer,
-            bool balanceCosts, 
+            bool balanceCostsX, bool balanceCostsY,
             bool FacilityDecompo, bool CustomerDecompo, bool doubleDecompo, 
             bool heurPricing, double heurPricingThreshold, 
             bool useLowerBound) :
@@ -68,7 +68,8 @@ Parameters::Parameters(bool ColumnGeneration, int nodeLimit, bool PriceAndBranch
     Farkas(Farkas),
     DynProgFacility(DynProgFacility),
     DynProgCustomer(DynProgCustomer),
-    balanceCosts(balanceCosts),
+    balanceCostsX(balanceCostsX),
+    balanceCostsY(balanceCostsY),
     FacilityDecompo(FacilityDecompo),
     CustomerDecompo(CustomerDecompo),
     doubleDecompo(doubleDecompo),
@@ -108,7 +109,8 @@ Parameters init_parameters(InstanceRCFLP* inst, int met) {
 
     // double décompo
     bool doubleDecompo = false;
-    bool balanceCosts = false;
+    bool balanceCostsX = false;
+    bool balanceCostsY = false ;
 
     // Paramètres du pricing
     bool heurPricing = false;
@@ -185,17 +187,26 @@ Parameters init_parameters(InstanceRCFLP* inst, int met) {
             // Cas 0 : basique, sans repartition de couts
 
             case 1:
-                balanceCosts = true ;
+                balanceCostsX = true ;
                 break ;
+
+            case 2:
+                balanceCostsY = true;
+                break;
+             
+            case 3:
+                balanceCostsX = true;
+                balanceCostsY = true;
+                break;
         }
     }
 
     if (indice >= 5){
-        DynProgFacility = false ;
+        DynProgFacility = true;
     }
 
     if (indice >= 6){
-        DynProgCustomer = false ;
+        DynProgCustomer = true ;
     }
 
     Parameters param(
@@ -204,7 +215,7 @@ Parameters init_parameters(InstanceRCFLP* inst, int met) {
                 compactCapacityConstraints,
                 heuristicInit, Farkas,
                 DynProgFacility, DynProgCustomer,
-                balanceCosts, 
+                balanceCostsX, balanceCostsY, 
                 FacilityDecompo, CustomerDecompo, doubleDecompo,
                 heurPricing, heurPricingThreshold, 
                 useLowerBound);

@@ -60,9 +60,9 @@ CplexPricingAlgoFacility::CplexPricingAlgoFacility(InstanceRCFLP* inst, const Pa
     //Initialisation des coefficients objectifs (primaux)
     if (Param.doubleDecompo){
         for (int i=0 ; i < I ; i++) {
-            BaseObjCoefX.at(i) =  inst->geta(facility,i);
+            BaseObjCoefX.at(i) = 0.5 * (2 - Param.balanceCostsX) * inst->geta(facility,i);
         }
-        BaseObjCoefY.at(0) = 0;
+        BaseObjCoefY.at(0) =  0.5 * Param.balanceCostsY * inst->getb(facility);
     }
     else {
         for (int i=0 ; i < I ; i++) {

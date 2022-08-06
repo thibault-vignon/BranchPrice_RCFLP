@@ -22,12 +22,13 @@ MasterCustomer_Variable::MasterCustomer_Variable(int c, IloNumArray x, IloNumArr
 void MasterCustomer_Variable::computeCost(InstanceRCFLP* inst, const Parameters & Param) {
     cost = 0;
 
-    // TODO : repartition
-
     if (Param.doubleDecompo){
         for (int j = 0 ; j < inst->getJ() ; j++) {
             if (y_plan[j] > 1 - Param.Epsilon){
-                cost += inst->getb(j) / inst->getI();
+                cost += 0.5 * (2 - Param.balanceCostsY) * inst->getb(j) / inst->getI();
+            }
+            if (x_plan[j] > 1 - Param.Epsilon){
+                cost += 0.5 * Param.balanceCostsX * inst->geta(j,customer);
             }
         }
     }
@@ -56,8 +57,10 @@ void MasterCustomer_Model::addCoefsToConstraints(SCIP* scip, MasterCustomer_Vari
         if (lambda->x_plan[j] > 1 - Param.Epsilon){
             SCIPaddCoefLinear(scip, capacity_cstr.at(j), lambda->ptr, - inst->getd(c)) ;
         }
+
+        // il y a autant de copies de chaque y que de clients, donc il ne faut pas simplement additionner les capacités
         if (lambda->y_plan[j] > 1 - Param.Epsilon){
-            SCIPaddCoefLinear(scip, capacity_cstr.at(j), lambda->ptr, inst->getc(j)) ;
+            SCIPaddCoefLinear(scip, capacity_cstr.at(j), lambda->ptr, inst->getc(j) / I) ;
         }
     }
 

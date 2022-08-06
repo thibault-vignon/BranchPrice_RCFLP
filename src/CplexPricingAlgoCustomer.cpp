@@ -63,8 +63,8 @@ CplexPricingAlgoCustomer::CplexPricingAlgoCustomer(InstanceRCFLP* inst, const Pa
     //Initialisation des coefficients objectifs (primaux)
     if (Param.doubleDecompo){
         for (int j=0 ; j < J ; j++) {
-            BaseObjCoefX.at(j) = 0 ;
-            BaseObjCoefY.at(j) = inst->getb(j) / inst->getI() ;
+            BaseObjCoefX.at(j) = 0.5 * Param.balanceCostsX * inst->geta(j,customer);
+            BaseObjCoefY.at(j) = 0.5 * (2 - Param.balanceCostsY) * inst->getb(j) / inst->getI() ;
         }
     }
     else {
@@ -105,14 +105,14 @@ void CplexPricingAlgoCustomer::updateObjCoefficients(InstanceRCFLP* inst, const 
             else {
                 obj.setLinearCoef(x[j], BaseObjCoefX.at(j) + inst->getd(customer) * Dual.Gamma[j]);
                 if (customer > 0){
-                    obj.setLinearCoef(y[j], BaseObjCoefY.at(j) - inst->getc(j) * Dual.Gamma[j] + Dual.Omega2[j*I + customer]);
+                    obj.setLinearCoef(y[j], BaseObjCoefY.at(j) - (inst->getc(j) / I) * Dual.Gamma[j] + Dual.Omega2[j*I + customer]);
                 } 
                 else {
                     double sum = 0;
                     for (int i=1 ; i < inst->getI() ; i++) {
                         sum += - Dual.Omega2[j*I + i] ;
                     }
-                    obj.setLinearCoef(y[j], BaseObjCoefY.at(j) - inst->getc(j) * Dual.Gamma[j] + sum);
+                    obj.setLinearCoef(y[j], BaseObjCoefY.at(j) - (inst->getc(j) / I) * Dual.Gamma[j] + sum);
                 }
             }
         }
@@ -142,14 +142,14 @@ void CplexPricingAlgoCustomer::updateObjCoefficients(InstanceRCFLP* inst, const 
             else{
                 obj.setLinearCoef(x[j], inst->getd(customer) * Dual.Gamma[j]);
                 if (customer > 0){
-                    obj.setLinearCoef(y[j], - inst->getc(j) * Dual.Gamma[j] + Dual.Omega2[j*I + customer]);
+                    obj.setLinearCoef(y[j], - (inst->getc(j) / I) * Dual.Gamma[j] + Dual.Omega2[j*I + customer]);
                 } 
                 else {
                     double sum = 0;
                     for (int i=1 ; i < inst->getI() ; i++) {
                         sum += - Dual.Omega2[j*I + i] ;
                     }
-                    obj.setLinearCoef(y[j], - inst->getc(j) * Dual.Gamma[j] + sum);
+                    obj.setLinearCoef(y[j], - (inst->getc(j) / I) * Dual.Gamma[j] + sum);
                 }
             }
         }
