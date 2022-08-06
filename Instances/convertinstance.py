@@ -1,7 +1,7 @@
 import sys
 
 
-with open(sys.argv[1] + "/" + sys.argv[2]) as file:
+with open("Instances/" + sys.argv[1] + "/" + sys.argv[2]) as file:
     lines = file.readlines()
 
 current = lines[0].rstrip().split()
@@ -46,6 +46,7 @@ for j1 in range(0, J):
 # print(estimations)
 
 nbvoisins = int(sys.argv[3])
+K = int(sys.argv[4])
 
 V = []
 
@@ -56,11 +57,11 @@ for j in range(0, J):
 # print(V)
 
 
-instance = open("Reliable/" + str(nbvoisins) + "_" + sys.argv[4] + "_"  + sys.argv[1] + "_" + sys.argv[2] + ".txt", "w")
+instance = open("Instances/Reliable/" + str(nbvoisins) + "_" + str(K) + "_"  + sys.argv[1] + "_" + sys.argv[2] + ".txt", "w")
 
 instance.write("J = " + str(J) + " ;" + '\n')
 instance.write("I = " + str(I) + " ;" + '\n')
-instance.write("K = " + sys.argv[4] + " ;" + '\n')
+instance.write("K = " + str(K) + " ;" + '\n')
 instance.write("c = " + str(s) + " ;" + '\n')
 instance.write("d = " + str(d) + " ;" + '\n')
 instance.write("b = " + str(f) + " ;" + '\n')

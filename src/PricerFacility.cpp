@@ -306,7 +306,7 @@ void ObjPricerFacility::pricingRCFLP( SCIP*              scip  , bool Farkas    
                 cout << "BUG : " << endl ;
                 cout << "redcost : " << redcost << endl;
 
-                (AlgoCplex[lambdaFacility->facility])->cplex.exportModel( (to_string(lambdaFacility->facility) + "_" + "bug.lp" ).c_str());
+                //(AlgoCplex[lambdaFacility->facility])->cplex.exportModel( (to_string(lambdaFacility->facility) + "_" + "bug.lp" ).c_str());
             }
         }
     }
