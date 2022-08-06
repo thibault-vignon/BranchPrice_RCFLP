@@ -17,6 +17,7 @@ MasterCustomer_Variable::MasterCustomer_Variable(int c, IloNumArray x, IloNumArr
     cost = 0 ;
     x_plan = x ;
     y_plan = y ;
+    cout << y_plan.getSize() << endl;
 }
 
 void MasterCustomer_Variable::computeCost(InstanceRCFLP* inst, const Parameters & Param) {

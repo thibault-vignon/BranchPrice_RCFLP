@@ -267,7 +267,6 @@ void ObjPricerCustomer::pricingRCFLP( SCIP*              scip  , bool Farkas    
         // TODO : currentLowerBound += objvalue + dual_cost_time.Sigma[t] ;
 
         if (objvalue < - Param.Epsilon) {
-
             if (!Param.DynProgFacility) {
                 (AlgoCplex[i])->getSolution(inst, dual_cost, xPlan, yPlan, Farkas);
             }
@@ -298,14 +297,14 @@ void ObjPricerCustomer::pricingRCFLP( SCIP*              scip  , bool Farkas    
 
             //// CREATION D'UNE NOUVELLE VARIABLE
             Master->initMasterCustomerVariable(scip, lambdaCustomer) ;
-
+            cout << "ok" << endl;
             /* add new variable to the list of variables to price into LP (score: leave 1 here) */
             SCIP_RETCODE ajout = SCIPaddPricedVar(scip, lambdaCustomer->ptr, 1.0);
             cout << "ajout var par temps: " << ajout << endl;
 
             ///// ADD COEFFICIENTS TO DEMAND, POWER LIMITS and CONVEXITY CONSTRAINTS
             Master->addCoefsToConstraints(scip, lambdaCustomer) ;
-
+            cout << "ok" << endl;
             customerColumns++;
 
             customerVarsToAdd.pop_front() ;

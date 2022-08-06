@@ -183,8 +183,12 @@ bool CplexPricingAlgoCustomer::findImprovingSolution(InstanceRCFLP* inst, const 
 }
 
 void CplexPricingAlgoCustomer::getSolution(InstanceRCFLP* inst, const DualCostsCustomer & Dual, IloNumArray xPlan, IloNumArray yPlan, bool Farkas) {
-
     cplex.getValues(x, xPlan) ;
-    cplex.getValues(y, yPlan) ;
-
+    try {
+        cplex.getValues(y, yPlan) ;
+    }
+    catch(...){
+        yPlan.add(IloNumArray(env, inst->getJ()));
+        cout << "caught" << endl;
+    }
 }
