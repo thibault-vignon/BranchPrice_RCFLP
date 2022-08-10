@@ -21,7 +21,7 @@ void MasterFacility_Variable::computeCost(InstanceRCFLP* inst, const Parameters 
             if (x_plan[i] > 1 - Param.Epsilon){
                 cost += 0.5 * (2 - Param.balanceCostsX) * inst->geta(facility,i);
             }
-            if (y_plan[0] > 1 - Param.Epsilon){
+            if (Param.compactCapacityConstraints && y_plan[0] > 1 - Param.Epsilon){
                 cost += 0.5 * Param.balanceCostsY * inst->getb(facility);
             }
         }

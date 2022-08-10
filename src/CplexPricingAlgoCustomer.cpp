@@ -53,6 +53,13 @@ CplexPricingAlgoCustomer::CplexPricingAlgoCustomer(InstanceRCFLP* inst, const Pa
         model.add(sum >= x[j] * inst->getd(customer) * inst->getK()) ;
     }
 
+    // Part of capacity constraints if they are not expressed in compact manner
+    if (!Param.compactCapacityConstraints && Param.doubleDecompo){
+        for (int j=0 ; j < J ; j++) {
+            model.add(y[j] >= x[j]) ;
+        }
+    }
+
 
     cplex = IloCplex(model);
     cplex.setParam(IloCplex::EpGap, 0.00001) ;
@@ -184,11 +191,13 @@ bool CplexPricingAlgoCustomer::findImprovingSolution(InstanceRCFLP* inst, const 
 
 void CplexPricingAlgoCustomer::getSolution(InstanceRCFLP* inst, const DualCostsCustomer & Dual, IloNumArray xPlan, IloNumArray yPlan, bool Farkas) {
     cplex.getValues(x, xPlan) ;
-    try {
-        cplex.getValues(y, yPlan) ;
-    }
-    catch(...){
-        yPlan.add(IloNumArray(env, inst->getJ()));
-        cout << "caught" << endl;
+    
+    for (int j=0 ; j<inst->getJ() ; j++) {
+        try {
+            yPlan[j] = cplex.getValue(y[j]) ;
+        }
+        catch(...){
+            yPlan[j] = 0;
+        }
     }
 }
